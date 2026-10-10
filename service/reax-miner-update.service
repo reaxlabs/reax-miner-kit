@@ -1,0 +1,9 @@
+[Unit]
+Description=REAX safe update
+After=network-online.target docker.service
+[Service]
+User=@USER@
+NoNewPrivileges=yes
+PrivateTmp=yes
+Type=oneshot
+ExecStart=@EXEC@ update apply --home @HOME@ --auto --json

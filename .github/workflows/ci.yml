@@ -1,0 +1,28 @@
+name: CI
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  unittest:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.8', '3.10', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m unittest discover -s tests
+      - run: python -m py_compile reaxctl reaxlib/*.py
+      - name: CLI smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./reaxctl spec --json | python3 -m json.tool
+          # exit 10 = requirement unmet (e.g. Python < 3.10 for mining tools); any other non-zero code is a failure
+          ./reaxctl doctor --json || [ "$?" -eq 10 ]

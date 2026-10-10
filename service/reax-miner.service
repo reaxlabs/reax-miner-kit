@@ -1,0 +1,17 @@
+[Unit]
+Description=REAX miner supervisor
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+User=@USER@
+NoNewPrivileges=yes
+PrivateTmp=yes
+Type=simple
+ExecStart=@EXEC@ run --home @HOME@ --json
+Restart=on-failure
+RestartSec=15
+WorkingDirectory=@WORKDIR@
+
+[Install]
+WantedBy=default.target

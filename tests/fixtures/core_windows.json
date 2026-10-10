@@ -1,0 +1,21 @@
+{
+  "host": {
+    "os": "windows-native",
+    "arch": "AMD64",
+    "cpu_cores": 8,
+    "ram_gb": 64,
+    "disk_free_gb": 200,
+    "python_version": "3.11.8",
+    "groups": [
+      "docker"
+    ],
+    "systemd_available": true,
+    "miner_port_free": true,
+    "wsl_gpu_path": false
+  },
+  "commands": {},
+  "expect": {
+    "status": "ok",
+    "eligible": []
+  }
+}

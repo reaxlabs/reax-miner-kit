@@ -1,0 +1,24 @@
+name: Feature request
+description: Suggest an improvement to reaxctl or its docs
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do that the kit does not support well?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety contract
+      options:
+        - label: This does not require handling coldkeys or recovery phrases, spending funds, or sending telemetry (see SPEC.md).
+          required: true

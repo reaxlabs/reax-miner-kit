@@ -1,0 +1,41 @@
+name: Bug report
+description: Something in reaxctl does not work as documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Never paste keys, recovery phrases, runtime tokens or wallet files. Redact IP addresses you want to keep private. Report security issues privately (see SECURITY.md).
+  - type: input
+    id: version
+    attributes:
+      label: Kit version
+      description: Output of `./reaxctl version`
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS, Python version and GPU
+      placeholder: Ubuntu 24.04, Python 3.12, RTX 4090
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command you ran
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Redacted output
+      description: Prefer the `--json` output.
+      render: json
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
