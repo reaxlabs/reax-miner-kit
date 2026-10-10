@@ -57,9 +57,21 @@ class DoctorTests(unittest.TestCase):
         self.assertFalse(result.data['rehearsal_capable'])
         self.assertIn('python3-venv', result.render_text())
 
+    def test_python_without_tarfile_filters_blocks_rehearsal(self):
+        fixture = json.loads((FIXTURES / 'core_4090.json').read_text())
+        host = dict(fixture['host'], python_version='3.11.2', python_tar_filter=False)
+        with tempfile.TemporaryDirectory() as tmp:
+            args = argparse.Namespace(home=tmp, mode=None, pool=None, probe_ip=False)
+            result = diagnose(args, probe=lambda cmd, timeout: fixture['commands'].get(' '.join(cmd), {'returncode': 127, 'stdout': '', 'stderr': ''}), host=host)
+        self.assertIn('python_tarfile', [b['id'] for b in result.data['blockers']])
+        self.assertFalse(result.data['rehearsal_possible'])
+        self.assertIn('3.11.4+', result.render_text())
+
     def test_host_facts_report_venv_support(self):
         with tempfile.TemporaryDirectory() as tmp:
-            self.assertIsInstance(sysprobe.facts(tmp, 0)['python_venv'], bool)
+            facts = sysprobe.facts(tmp, 0)
+        self.assertIsInstance(facts['python_venv'], bool)
+        self.assertIsInstance(facts['python_tar_filter'], bool)
 
     def test_plan_text_lists_steps(self):
         with tempfile.TemporaryDirectory() as tmp:

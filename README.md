@@ -16,7 +16,7 @@ Read this before you spend anything.
 
 ## Quickstart for people
 
-Start at https://reax.dev/mine/ for the guide and current launch status. On Ubuntu/Debian the controller needs only `git` and `python3` (3.8 or newer); `install` and the rehearsal also need `python3-venv` (Python 3.10 or newer), which Debian and Ubuntu package separately:
+Start at https://reax.dev/mine/ for the guide and current launch status. On Ubuntu/Debian the controller needs only `git` and `python3` (3.8 or newer); `install` and the rehearsal also need `python3-venv`, which Debian and Ubuntu package separately, and Python 3.10.12+, 3.11.4+ or 3.12+ (the rehearsal unpacks its chain image with tarfile extraction filters). Ubuntu 22.04 and newer and Debian 13 qualify; Debian 12's Python 3.11.2 does not, so there run `reaxctl` with a newer Python (for example `python3.12 ./reaxctl install`). `doctor` checks both:
 
 ```sh
 sudo apt-get update && sudo apt-get install -y git python3 python3-venv

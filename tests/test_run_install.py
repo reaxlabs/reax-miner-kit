@@ -141,6 +141,13 @@ class InstallTest(unittest.TestCase):
         self.assertEqual(result.code(), 12)
         self.assertIn('mark the REAX source as public', result.summary)
         run.assert_not_called()
+    def test_localnet_install_requires_tarfile_filters(self):
+        with patch.dict(install.os.environ, {'REAX_SOURCE_DIR': '/src'}), patch.object(install, 'descriptor', return_value=D), \
+                patch.object(install, 'tarfile', SimpleNamespace()), patch.object(install, 'runner') as run:
+            result = install.install(args(self.home, mode='localnet'))
+        self.assertEqual(result.code(), 10)
+        self.assertIn('3.11.4+', result.summary)
+        run.assert_not_called()
     def test_tool_detail_masks_tokens(self):
         self.assertEqual(install.detail('fatal: bad ghp_' + 'A' * 20), 'fatal: bad ghp_***')
     def test_low_disk_stops_before_tools(self):

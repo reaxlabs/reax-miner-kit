@@ -12,6 +12,8 @@ from .cli import add_common
 from .result import Result
 
 DOCKER_DOC = 'https://docs.docker.com/engine/install/'
+TARFILE_MESSAGE = 'This Python lacks tarfile extraction filters, which the rehearsal needs to unpack the chain image safely.'
+TARFILE_FIX = 'Use Python 3.10.12+, 3.11.4+ or 3.12+ (Ubuntu 22.04+ or Debian 13 ship one) and run reaxctl with it, for example python3.12 ./reaxctl install.'
 NVIDIA_DOC = 'https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html'
 
 
@@ -104,6 +106,9 @@ def diagnose(args, probe=None, host=None, release=None):
     elif not host.get('python_venv', True):
         rehearsal = False
         block('python_venv', 'Python venv support (ensurepip) is missing; install cannot create the tool environment.', 'On Debian/Ubuntu run: sudo apt-get install -y python3-venv')
+    elif not host.get('python_tar_filter', True):
+        rehearsal = False
+        block('python_tarfile', TARFILE_MESSAGE, TARFILE_FIX)
     eligible = []
     for pool in release['pools']:
         active = pool['enabled_at_launch'] or getattr(args, 'pool', None) == pool['id']

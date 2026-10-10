@@ -7,6 +7,7 @@ import secrets
 import shutil
 import subprocess
 import sys
+import tarfile
 import time
 from .cli import add_common
 from .result import Result
@@ -243,6 +244,9 @@ def install(args):
     minimum_python = tuple(int(x) for x in d.get('requirements', {}).get('python_min', '3.10').split('.'))
     if sys.version_info[:2] < minimum_python:
         return Result('install', 'blocked', 'Run install with Python {} or newer for the miner tools.'.format('.'.join(map(str, minimum_python))), exit_code=10)
+    if mode == 'localnet' and not hasattr(tarfile, 'data_filter'):
+        from .cmd_doctor import TARFILE_MESSAGE, TARFILE_FIX
+        return Result('install', 'blocked', TARFILE_MESSAGE + ' ' + TARFILE_FIX, exit_code=10)
     name = getattr(args, 'pool', None) or config.get('pool', 's1-fast')
     pool = pool_of(d, name)
     if not pool:

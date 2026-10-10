@@ -53,7 +53,9 @@ def facts(home, port=8091):
         venv_ok = importlib.util.find_spec('ensurepip') is not None  # Debian/Ubuntu ship it separately as python3-venv
     except (ImportError, ValueError):
         venv_ok = False
+    import tarfile
     return {'os': os_name, 'arch': platform.machine(), 'cpu_cores': os.cpu_count() or 1, 'ram_gb': ram,
-            'disk_free_gb': disk, 'python_version': platform.python_version(), 'python_venv': venv_ok, 'groups': groups,
+            'disk_free_gb': disk, 'python_version': platform.python_version(), 'python_venv': venv_ok,
+            'python_tar_filter': hasattr(tarfile, 'data_filter'), 'groups': groups,
             'systemd_available': Path('/run/systemd/system').exists(), 'miner_port_free': free,
             'wsl_gpu_path': Path('/usr/lib/wsl/lib').exists()}

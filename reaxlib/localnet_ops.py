@@ -241,7 +241,8 @@ def up(args):
         rc, out, err = io.runner([str(py), '-I', '-c', FETCH, str(source / 'scripts/localnet/fetch_node.py'), str(node)], timeout=900)
         (work / 'fetch-node.log').write_text(out + err)
         if rc:
-            return Result('localnet up', 'error', 'Native subtensor download failed; GHCR access is needed once.', exit_code=13)
+            return Result('localnet up', 'error', 'Native subtensor download or unpack failed (GHCR access is needed once); see localnet/fetch-node.log.',
+                          data={'detail': io.detail(out + err)}, exit_code=13)
     root = node / 'rootfs'
     nodecmd = [str(root / 'lib64/ld-linux-x86-64.so.2'), '--library-path',
                str(root / 'usr/lib/x86_64-linux-gnu') + ':' + str(root / 'lib/x86_64-linux-gnu'), str(binary)]
@@ -323,7 +324,7 @@ def up(args):
 def started(home):
     result = status(home)
     result.command = 'localnet up'
-    result.summary = 'Rehearsal started.'
+    result.summary = 'Rehearsal is running.'
     result.next = [{'command': 'reaxctl wallet status', 'why': 'Show the rehearsal public addresses.'},
                    {'command': 'reaxctl verify', 'why': 'Passes after the first validator rounds, usually within a minute.'}]
     return result
