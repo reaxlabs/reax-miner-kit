@@ -1,6 +1,6 @@
 # REAX miner kit
 
-`reaxctl` helps people and their agents prepare a miner for the REAX Bittensor subnet. The controller uses Python 3.8+ and the standard library; mining and rehearsal tools need Python 3.10+ in an isolated venv.
+`reaxctl` helps people and their agents prepare a miner for the REAX Bittensor subnet via Decision Models. The controller uses Python 3.8+ and the standard library; mining and rehearsal tools need Python 3.10+ in an isolated venv.
 
 REAX is registered on Bittensor Finney mainnet as netuid 92. Current chain status and release availability are reported separately in the release descriptor. Real-network actions remain closed while `status.live` is false; source and image access each have their own release gate. The native localnet rehearsal needs a subnet source checkout (`REAX_SOURCE_DIR`) when the descriptor does not mark the source public. Testnet also needs its own configured netuid. Protocol and scoring documentation is at [reax.dev](https://reax.dev/mine/).
 
@@ -16,7 +16,7 @@ Read this before you spend anything.
 
 ## Quickstart for people
 
-Start at https://reax.dev/mine/ for the guide and current launch status. On Ubuntu/Debian the controller needs only `git` and `python3` (3.8 or newer):
+Start at https://mine.decisionmodels.io for the kit download and current launch status; the protocol guide is at https://reax.dev/mine/. On Ubuntu/Debian the controller needs only `git` and `python3` (3.8 or newer):
 
 ```sh
 sudo apt-get update && sudo apt-get install -y git python3
@@ -47,7 +47,7 @@ The rehearsal runs a local chain, a hash runtime miner and a validator using dis
 
 Give your agent this one-sentence prompt:
 
-> Set up this machine for mining on the REAX subnet: https://reax.dev/mine/
+> Set up this machine for mining at Decision Models by REAX: https://mine.decisionmodels.io.
 
 Read [AGENTS.md](AGENTS.md), then use `./reaxctl spec --json`, `./reaxctl agent-rules --json` and `./reaxctl doctor --json`. Every command supports `--json` and returns one `reaxctl/1` object with status, warnings, human actions and next steps. `--yes` does not authorize payments or key disclosure.
 
@@ -91,7 +91,7 @@ Expose only the real miner port (default 8091). Keep runtime ports 8101, 8102 an
 
 | Destination | Use |
 | --- | --- |
-| `raw.githubusercontent.com/reaxlabs/reax-miner-kit/main/releases/current.json` | Doctor/plan/install/register/start/update refresh (one-hour TTL); --offline disables |
+| `mine.decisionmodels.io/releases/current.json` | Doctor/plan/install/register/start/update refresh (one-hour TTL); --offline disables |
 | `ghcr.io` | Pinned miner/runtime images and native localnet chain image |
 | `huggingface.co`, `cdn-lfs.huggingface.co`, `cas-bridge.xethub.hf.co` | Pinned weights and optional reachability check |
 | `github.com/reaxlabs/reax-subnet` | Pinned source, when public |
@@ -109,7 +109,7 @@ Docker and package hosts may use their download infrastructure. A custom descrip
 
 [releases/current.json](releases/current.json) selects source refs, image tags/digests, model revisions and approved manifests. [Descriptor documentation](releases/README.md) explains the fields. `update check` compares installed pins. Safe same-manifest updates can run automatically; the optional timer checks daily. A manifest change resets the score to zero and requires explicit human confirmation with `--accept-manifest-change`. The timer cannot provide that approval. Previous compose, environment and configuration files remain under the state directory's `rollback/`.
 
-Verify the exact release before running it: check out a published git tag of this repository (`git tag -l`, `git checkout <tag>`) and compare its commit against the one announced at https://reax.dev/mine/. A tag or checksum you cannot find in a second place is not verification. Kit version 0.1.5 includes the documented security hardening.
+Verify the exact release before running it: check out a published git tag of this repository (`git tag -l`, `git checkout <tag>`) and compare it with the tag and SHA256 checksum published on https://mine.decisionmodels.io (and the commit announced at https://reax.dev/mine/). A tag or checksum you cannot find in a second place is not verification. Kit version 0.1.5 includes the documented security hardening.
 
 ## Contributing and issues
 
@@ -119,7 +119,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Open an issue in this repository with th
 ## Security model
 
 `doctor`, `plan`, `install`, `register`, `start` and `update` refresh the release descriptor
-from `https://raw.githubusercontent.com/reaxlabs/reax-miner-kit/main/releases/current.json` (or `REAX_RELEASES_URL`). A validated
+from `https://mine.decisionmodels.io/releases/current.json` (or `REAX_RELEASES_URL`). A validated
 cache lasts one hour; `--offline` or `REAX_OFFLINE=1` uses the cache/bundled descriptor only.
 Fetch/validation failures preserve a valid fallback and add a warning. HTTPS is required,
 with HTTP allowed only for localhost/127.0.0.1; responses are limited to 256 KB, with a five-second

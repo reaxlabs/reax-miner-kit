@@ -1,7 +1,7 @@
 # reaxctl — design contract 
 
 `reaxctl` is the one tool a person's agent (a coding agent) runs to set a machine up for mining on the REAX subnet
-(Bittensor). It is a Python 3.8+ **stdlib-only** controller (`reaxctl`, executable, `#!/usr/bin/env python3`, plus the bundled `reaxlib/` package);
+(Bittensor) via Decision Models. It is a Python 3.8+ **stdlib-only** controller (`reaxctl`, executable, `#!/usr/bin/env python3`, plus the bundled `reaxlib/` package);
 no pip needed to run the controller. Miner/rehearsal tools use the descriptor's Python minimum in an isolated venv. Linux x86_64 (incl. WSL2) is the mining platform; macOS/Windows get `doctor`, wallet guidance and the
 localnet rehearsal. Written for AGENTS first: every command has `--json`, is idempotent, never prompts unless run on a TTY
 without `--yes`, and ends with `next` steps.
@@ -37,7 +37,7 @@ external_ip, release_id), `state.json` (completed steps + timestamps, for resume
 `~/.bittensor/wallets/<wallet_name>/` (bittensor default). `reaxctl uninstall` never touches wallets.
 
 ## Release descriptor (`releases/current.json`, schema `reax-release/1`)
-Single source of truth for pins. Fetched from `$REAX_RELEASES_URL` (default `https://raw.githubusercontent.com/reaxlabs/reax-miner-kit/main/releases/current.json`),
+Single source of truth for pins. Fetched from `$REAX_RELEASES_URL` (default `https://mine.decisionmodels.io/releases/current.json`),
 cached, fallback to the copy bundled in the kit. Fields: `release_id`, `status{launch_status:"launching_soon|registered_starting_soon|live", live:bool,
 netuid:int|null, network:"finney", testnet_netuid:int|null, notes}`, `minimum_release`, `images{miner,s1_fast_runtime,
 s1_pro_runtime, tag, digests{…}|null, public:bool}`, `source{git, ref, public:bool}`, `pools[]` (id, model, weights{repo,revision,

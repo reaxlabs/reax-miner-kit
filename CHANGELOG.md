@@ -2,7 +2,7 @@
 
 ## 0.1.5
 
-Trust the `reaxlabs` GitHub organisation as the source and image owner. Update the bundled source and image references for the repository move. The default descriptor URL is the `main` branch of this repository.
+Trust the `reaxlabs` GitHub organisation as the source and image owner. Update the bundled source and image references for the repository move..
 
 ## 0.1.3
 

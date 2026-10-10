@@ -31,9 +31,9 @@ Optional descriptive notes do not grant execution authority. No descriptor flag 
 3. Set `source.public:true` only when the exact reviewed source tag or commit is public. Confirm tool and model revisions, gates and access permissions.
 4. Verify launch-enabled pools, approved manifests/commitments, resource requirements, ports and links. Keep s1-pro disabled unless explicitly approved for launch.
 5. Update `release_id`, declared `minimum_release` and release notes. Review manifest changes; they reset scores and require human confirmation.
-6. Update the bundled descriptor, the public kit copy at https://raw.githubusercontent.com/reaxlabs/reax-miner-kit/main/releases/current.json and https://reax.dev/miner.json together. Check that source ref/commit, image tag/digests and public flags agree. Keep `status.live:false` until the owner-start watcher confirms chain start; the watcher updates only the status fields.
+6. Update the bundled descriptor, the public kit copy at https://mine.decisionmodels.io/releases/current.json and https://reax.dev/miner.json together. Check that source ref/commit, image tag/digests and public flags agree. Keep `status.live:false` until the owner-start watcher confirms chain start; the watcher updates only the status fields.
 7. Run the unit suite, compatibility CI, public download checks and a controlled real miner rehearsal through human registration. Never perform payments from the kit.
-8. Publish the reviewed kit git tag and announce its commit at https://reax.dev/mine/. Verify a fresh clone of the tag against it; retain release evidence.
+8. Publish the reviewed kit git tag and its artifact SHA256 on https://mine.decisionmodels.io. Verify the downloaded artifact against the published hash; retain release evidence.
 
 Kit 0.1.5 validates descriptors before caching or consumption. Images must use ghcr.io;
 live public images need sha256 digests. Tool keys are bittensor/typer/huggingface_hub, with

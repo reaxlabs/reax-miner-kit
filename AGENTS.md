@@ -1,6 +1,6 @@
 # Agents using or developing the REAX miner kit
 
-Read [SPEC.md](SPEC.md), this repository's safety contract, and the machine-readable summary at https://reax.dev/miner.json. Humans start at https://reax.dev/mine/.
+Start at https://mine.decisionmodels.io and read https://mine.decisionmodels.io/agent.md for the published onboarding rules. This repository's safety contract is [SPEC.md](SPEC.md); the machine-readable summary is https://reax.dev/miner.json.
 
 ## Using the kit
 

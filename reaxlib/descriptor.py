@@ -11,7 +11,7 @@ import urllib.request
 
 from . import state
 
-DEFAULT_URL = 'https://raw.githubusercontent.com/reaxlabs/reax-miner-kit/main/releases/current.json'
+DEFAULT_URL = 'https://mine.decisionmodels.io/releases/current.json'
 BUNDLED = Path(__file__).resolve().parent.parent / 'releases' / 'current.json'
 
 
@@ -127,7 +127,7 @@ def validate(value):
         if type(value['update'][k]) is not bool:
             raise ValueError('descriptor update flags must be boolean')
     registration = urlparse(value['links']['register'])
-    if registration.username or registration.password or registration.hostname not in ('reax.dev',):
+    if registration.username or registration.password or registration.hostname not in ('reax.dev', 'mine.decisionmodels.io'):
         raise ValueError('invalid descriptor registration host')
     for pool in value['pools']:
         if pool['id'] not in ('s1-fast', 's1-pro'):

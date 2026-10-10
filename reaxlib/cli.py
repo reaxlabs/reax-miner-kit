@@ -27,7 +27,7 @@ MODULES = [
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="reaxctl", description="Set up a machine for mining on the REAX subnet.")
+    p = argparse.ArgumentParser(prog="reaxctl", description="Set up a machine for mining on the REAX subnet (Decision Models).")
     p.add_argument("--version", action="version", version=f"reaxctl {__version__}")
     sub = p.add_subparsers(dest="cmd", metavar="<command>")
     for name, _owner in MODULES:
