@@ -163,6 +163,7 @@ def step_graph(mode='localnet', pool='s1-fast', live=False, unavailable=None):
     entries = [('doctor', 'agent', 'none', True, 'reaxctl doctor'),
                ('choose-mode', 'agent', 'none', True, 'reaxctl plan --mode ' + mode),
                ('install', 'agent', 'none', True, 'reaxctl install --pool ' + pool + ' --mode ' + mode),
+               ('selfcheck', 'agent', 'none', True, 'reaxctl selfcheck'),
                ('hotkey', 'agent', 'none', False, 'reaxctl wallet hotkey'),
                ('coldkey', 'human', 'none', False, None),
                ('coldkeypub', 'agent', 'none', True, 'reaxctl wallet coldkeypub --ss58 <public-address>'),
@@ -173,7 +174,7 @@ def step_graph(mode='localnet', pool='s1-fast', live=False, unavailable=None):
                ('update-timer', 'agent', 'none', True, 'reaxctl update timer install')]
     steps = []
     for ident, who, cost, reversible, command in entries:
-        if mode == 'localnet' and ident in ('coldkey', 'coldkeypub'):
+        if mode == 'localnet' and ident in ('selfcheck', 'coldkey', 'coldkeypub'):
             continue
         item = {'id': ident, 'who': who, 'cost': {'kind': cost, 'note': 'Test TAO only.' if ident == 'register' and mode == 'localnet' else 'The registration page shows the live fee; you approve in your own wallet' if cost == 'tao' else 'No payment by reaxctl.'}, 'reversible': reversible, 'command': command}
         if ident == 'coldkey':

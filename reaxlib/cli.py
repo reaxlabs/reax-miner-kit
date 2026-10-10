@@ -19,6 +19,7 @@ MODULES = [
     ("reaxlib.cmd_wallet", "core"),    # wallet hotkey|coldkeypub|status, register
     ("reaxlib.cmd_install", "run"),    # install
     ("reaxlib.cmd_runtime", "run"),    # start, stop, restart, status, logs, run, verify
+    ("reaxlib.cmd_selfcheck", "run"),  # selfcheck
     ("reaxlib.cmd_service", "run"),    # service install|uninstall|status
     ("reaxlib.cmd_update", "run"),     # update check|apply|timer
     ("reaxlib.cmd_localnet", "run"),   # localnet up|down|status

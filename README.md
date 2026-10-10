@@ -58,12 +58,13 @@ Read [AGENTS.md](AGENTS.md), then use `./reaxctl spec --json`, `./reaxctl agent-
 | `doctor [--pool P] [--probe-ip]` | Read-only host requirements; optional explicit network probes |
 | `plan --mode M --pool P` | Ordered setup steps, costs, owners and availability blocks |
 | `install --mode M --pool P` | Prepare pinned tools, source or images and weights |
+| `selfcheck [--no-start]` | Testnet/mainnet: run the release's reference decisions through the runtime sidecar before registering (no wallet or chain needed) |
 | `wallet hotkey` | Create only a hotkey; never show its phrase |
 | `wallet coldkeypub --ss58 ADDRESS` | Import a public coldkey address |
 | `wallet status` | Public addresses, file permissions and rehearsal wallet location |
 | `register --mode M` | Rehearsal registration or human real-network handoff |
 | `start / stop / restart / run` | Manage the installed miner; `run` supervises in foreground |
-| `status / logs --lines N / verify` | Inspect runtime and verify observable readiness |
+| `status / logs --lines N / verify [--selfcheck]` | Inspect runtime and verify observable readiness |
 | `localnet up / down / status` | Manage the native rehearsal |
 | `service install / uninstall / status` | Manage a systemd service or macOS LaunchAgent |
 | `update check / apply` | Compare pins, apply safe updates, retain rollback files |

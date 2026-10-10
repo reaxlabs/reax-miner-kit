@@ -183,9 +183,17 @@ def verify(args, home, config):
                 except OSError:
                     pass
             item('sidecar privacy', not exposed, 'Bind sidecars to loopback and close external ports {}.'.format(exposed))
+    warnings = []
+    if getattr(args, 'selfcheck', False):
+        if localnet:
+            warnings.append('The reference self-check needs the real model runtime; skipped in localnet.')
+        else:
+            from .cmd_selfcheck import selfcheck
+            check = selfcheck(args, home, config, start=False)  # verify observes; it never starts containers
+            item('reference selfcheck', check.ok, check.summary)
     failed = [x for x in checklist if not x['pass']]
     return Result('verify', 'error' if failed else 'ok', failed[0]['fix'] if failed else 'End-to-end verification passed.',
-                  data={'checklist': checklist, 'untrusted': True, 'notice': NOTICE}, exit_code=20 if failed else 0)
+                  data={'checklist': checklist, 'untrusted': True, 'notice': NOTICE}, warnings=warnings, exit_code=20 if failed else 0)
 
 
 def register(sub):
@@ -196,4 +204,5 @@ def register(sub):
             p.add_argument('--lines', type=int, default=100)
         if command == 'verify':
             p.add_argument('--probe-ip', action='store_true')
+            p.add_argument('--selfcheck', action='store_true', help='also run the reference self-check (loads the GPU for about a minute)')
         p.set_defaults(func=handle)

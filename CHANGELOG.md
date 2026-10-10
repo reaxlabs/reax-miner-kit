@@ -6,6 +6,7 @@
 - Failures of git, pip and the weights download show their reason (`detail`), with tokens and URL credentials masked.
 - Text output shows plan steps, failed `verify` checks and localnet processes; `localnet up` suggests the next commands; `net-policy` lists the ghcr.io and PyPI downloads of the first rehearsal.
 - Release descriptor pins the current subnet source commit.
+- New `reaxctl selfcheck` for testnet/mainnet: runs the subnet release's reference self-check against the runtime sidecar before registration; `plan` lists it after `install`, `verify --selfcheck` adds it as a checklist item.
 
 ## 0.1.5
 
