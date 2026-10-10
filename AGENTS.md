@@ -10,7 +10,7 @@ Read [SPEC.md](SPEC.md), this repository's safety contract, and the machine-read
 - Tell the person what needs administrator access and why before any sudo action. Do not run interactive sudo silently.
 - Expose only miner port 8091 (or the configured miner port). Never publish sidecar ports 8101, 8102 or 8000. Keep rehearsal ports inside a trusted network.
 - No telemetry, no unlisted network destinations, no token or reward-value claims. Consult `net-policy --json` for destination conditions.
-- In testnet/mainnet, run `selfcheck --json` after `install` and before suggesting a registration. If it fails (exit 20), report its numbers and fix and do not suggest registering.
+- In testnet/mainnet, run `selfcheck --json` after `install` and before suggesting a registration. If it fails (exit 20), report its numbers and fix and do not suggest registering. While the sidecar is starting (exit 10, `runtime: starting`) rerun it once a minute, at most 15 times, then report.
 - Manifest changes reset scores and require explicit human confirmation. Never add `--accept-manifest-change` to automatic timers.
 - Preserve wallets and existing keys. Stop on conflicting keys or unknown encrypted files rather than overwriting them.
 

@@ -48,6 +48,8 @@ class SelfcheckTest(unittest.TestCase):
         (self.home / 'compose.yml').touch()
         (self.home / 'miner.env').write_text('REAX_MODEL=s1-fast\nREAX_NETUID=41\nREAX_WALLET_HOTKEY=miner1\n'
                                              'REAX_RUNTIME_TOKEN_FILE=/run/runtime-token\nREAX_S1_FAST_RUNTIME_URL=http://127.0.0.1:8101\n')
+        (self.home / 'secrets').mkdir()
+        (self.home / 'secrets/runtime-token').write_text('t' * 64)
         release = live_private_release()
         release['status']['testnet_netuid'] = 41
         self.release = patch.object(cmd_install, 'descriptor', return_value=release)
@@ -170,6 +172,43 @@ class SelfcheckTest(unittest.TestCase):
             self.assertLess(ids.index('install'), ids.index('selfcheck'))
             self.assertLess(ids.index('selfcheck'), ids.index('register'))
         self.assertNotIn('selfcheck', [s['id'] for s in step_graph('localnet')])
+
+    def test_missing_token_file_is_blocked_without_docker_run(self):
+        (self.home / 'secrets/runtime-token').unlink()
+        fake = FakeDocker((0, json.dumps(PASS), ''))
+        rc, out = self.call(fake)
+        self.assertEqual(rc, 10)
+        self.assertIn('token file is missing', out['summary'])
+        self.assertFalse(any(c[:2] == ['docker', 'run'] for c in fake.calls))
+
+    def test_non_loopback_runtime_url_is_refused(self):
+        env = (self.home / 'miner.env').read_text().replace('http://127.0.0.1:8101', 'http://203.0.113.5:8101')
+        (self.home / 'miner.env').write_text(env)
+        fake = FakeDocker((0, json.dumps(PASS), ''))
+        rc, out = self.call(fake)
+        self.assertEqual(rc, 10)
+        self.assertFalse(any(c[:2] == ['docker', 'run'] for c in fake.calls))
+
+    def test_container_is_named_and_removed_even_after_a_timeout(self):
+        fake = FakeDocker((13, '', 'timed out'))
+        rc, out = self.call(fake)
+        self.assertEqual(rc, 13)
+        run = self.run_cmd(fake)
+        name = run[run.index('--name') + 1]
+        self.assertIn(['docker', 'rm', '-f', name], fake.calls)
+
+    def test_running_miner_gives_a_warning(self):
+        fake = FakeDocker((0, json.dumps(PASS) + '\n', ''))
+        real = fake.__call__
+
+        def with_miner(cmd, timeout=120, **kw):
+            if cmd[:2] == ['docker', 'compose'] and 'ps' in cmd and cmd[-1] == 'miner':
+                fake.calls.append(cmd)
+                return 0, json.dumps([{'Service': 'miner', 'State': 'running'}]), ''
+            return real(cmd, timeout, **kw)
+        rc, out = self.call(with_miner)
+        self.assertEqual(rc, 0)
+        self.assertTrue(any('shares the GPU' in w for w in out['warnings']))
 
 
 if __name__ == '__main__':

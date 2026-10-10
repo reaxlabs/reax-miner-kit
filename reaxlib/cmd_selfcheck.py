@@ -54,6 +54,22 @@ def miner_env(home):
     return values
 
 
+def loopback_url(url):
+    from urllib.parse import urlsplit
+    try:
+        parts = urlsplit(url)
+        host = parts.hostname
+    except ValueError:
+        return False
+    return parts.scheme in ('http', 'https') and not parts.username and host in ('127.0.0.1', 'localhost', '::1')
+
+
+def miner_running(home):
+    rc, out, _ = compose(home, 'ps', '--format', 'json', 'miner')
+    containers = _containers(out) if rc == 0 else None
+    return any(c.get('Service') == 'miner' and c.get('State') == 'running' for c in containers or [])
+
+
 def missing_entrypoint(rc, err):
     text = err.lower()
     return rc in (126, 127) and ('executable file not found' in text or 'no such file or directory' in text or ENTRYPOINT in text)
@@ -109,13 +125,25 @@ def selfcheck(args, home=None, config=None, start=None):
     token_target = env.get('REAX_RUNTIME_TOKEN_FILE', '')
     if not image or 'REAX_MODEL' not in env or not token_target.startswith('/') or ':' in token_target:
         return Result('selfcheck', 'blocked', 'The installed compose.yml or miner.env is incomplete; rerun install.', exit_code=10)
+    token = home / 'secrets/runtime-token'
+    if not token.is_file() or ':' in str(token):  # docker -v would create a missing source as a root-owned directory
+        return Result('selfcheck', 'blocked', 'The runtime token file is missing; rerun install.', exit_code=10)
+    if any(not loopback_url(v) for k, v in env.items() if k.endswith('_RUNTIME_URL')):
+        return Result('selfcheck', 'blocked', 'miner.env names a runtime URL that is not on loopback; rerun install.', exit_code=10)
+    warnings = []
+    if miner_running(home):
+        warnings.append('The miner is running: the check shares the GPU with live validator requests and its speed figure is not representative.')
     # A plain container with only the token mounted: compose run would bind the wallet paths, which may not exist before registration.
-    cmd = ['docker', 'run', '--rm', '--network', 'host', '--user', '{}:{}'.format(os.getuid(), os.getgid()), '--cap-drop', 'ALL',
-           '--security-opt', 'no-new-privileges:true', '-v', str(home / 'secrets/runtime-token') + ':' + token_target + ':ro']
+    name = 'reax-selfcheck-{}'.format(os.getpid())
+    cmd = ['docker', 'run', '--rm', '--name', name, '--network', 'host', '--user', '{}:{}'.format(os.getuid(), os.getgid()), '--cap-drop', 'ALL',
+           '--security-opt', 'no-new-privileges:true', '-v', str(token) + ':' + token_target + ':ro']
     for key in sorted(env):
         cmd += ['-e', key + '=' + env[key]]
     cmd += ['--entrypoint', ENTRYPOINT, image, '--json']
-    rc, out, err = io.runner(cmd, timeout=1800)
+    try:
+        rc, out, err = io.runner(cmd, timeout=900)
+    finally:
+        io.runner(['docker', 'rm', '-f', name], timeout=60)  # a timed-out or interrupted client leaves the container running
     if missing_entrypoint(rc, err):
         return Result('selfcheck', 'blocked', 'The installed subnet release predates reax-selfcheck; update to the current release, then rerun reaxctl selfcheck.',
                       exit_code=10, next=[{'command': 'reaxctl update check', 'why': 'Compare installed pins with the current release.'}])
@@ -131,8 +159,8 @@ def selfcheck(args, home=None, config=None, start=None):
         return Result('selfcheck', 'blocked', 'The self-check cannot run: {}'.format(data.get('error') or 'see detail'), data=data, exit_code=10,
                       next=[{'command': 'reaxctl logs --lines 200', 'why': 'Inspect the runtime sidecar.'}])
     if rc == 0 and report.get('pass') is True:
-        return Result('selfcheck', summary='Reference self-check passed: ' + numbers(data) + '.', data=data)
-    return Result('selfcheck', 'error', 'Reference self-check failed: ' + numbers(data) + '. ' + FAIL_FIX, data=data, exit_code=20)
+        return Result('selfcheck', summary='Reference self-check passed: ' + numbers(data) + '.', data=data, warnings=warnings)
+    return Result('selfcheck', 'error', 'Reference self-check failed: ' + numbers(data) + '. ' + FAIL_FIX, data=data, exit_code=20, warnings=warnings)
 
 
 def register(sub):

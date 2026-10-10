@@ -46,7 +46,7 @@ only the runtime sidecar if it is stopped, waits for it to be healthy (rerun whi
 loads), then runs the release's `reax-selfcheck` in the installed miner image with the
 runtime token and the miner's model/sidecar settings, no wallet mounts. Exit 0 pass,
 20 fail, 10 when it cannot run. The check loads the GPU for about a minute, so `verify`
-runs it only with `--selfcheck`.
+runs it only with `--selfcheck`. Run it before the miner starts serving: on a serving miner it shares the GPU with live validator requests (it warns).
 
 `start`, `stop`, `restart` and `run` manage the installed mode. `run` keeps the
 supervisor in the foreground. `status --json` returns processes/containers, health,
