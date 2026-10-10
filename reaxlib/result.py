@@ -55,7 +55,7 @@ class Result:
         if self.command == 'doctor':
             lines = ['Verdict', '  [{}] {}'.format(self.status, self.summary),
                      'What works today (rehearsal)',
-                     '  ' + ('Localnet rehearsal is possible with the pinned source and tools.' if self.data.get('rehearsal_possible') else ('The practice run needs the REAX source, which the release descriptor does not yet mark as available.' if self.data.get('rehearsal_capable') else 'Install the required Python version before rehearsal.')),
+                     '  ' + ('Localnet rehearsal is possible with the pinned source and tools.' if self.data.get('rehearsal_possible') else ('The practice run needs the REAX source, which the release descriptor does not yet mark as available.' if self.data.get('rehearsal_capable') else 'Install Python venv support (Debian/Ubuntu: python3-venv) before rehearsal.' if any(b.get('id') == 'python_venv' for b in self.data.get('blockers', [])) else 'Use a Python with tarfile extraction filters (3.10.12+, 3.11.4+ or 3.12+) before rehearsal.' if any(b.get('id') == 'python_tarfile' for b in self.data.get('blockers', [])) else 'Install the required Python version before rehearsal.')),
                      'What is needed for real mining']
             for item in self.data.get('blockers', []):
                 lines.extend(['  ' + item['message'], '    Fix: ' + item['fix']])
@@ -72,6 +72,18 @@ class Result:
             lines.append('  Rehearsal wallets: ' + rehearsal['path'])
             for wallet in rehearsal['wallets']:
                 lines.append('    ' + wallet['name'] + ': ' + str(wallet.get('hotkey_ss58') or wallet.get('coldkeypub_ss58') or 'public address unavailable'))
+        if self.data.get('detail'):
+            lines.append(f"  detail: {self.data['detail']}")
+        if self.command == 'plan':
+            for i, step in enumerate(self.data.get('steps', []), 1):
+                extra = ' (blocked: ' + step['blocked'] + ')' if step.get('blocked') else ''
+                lines.append(f"  {i}. {step['id']} [{step['who']}]: {step.get('command') or step.get('instructions', '')}{extra}")
+        for check in self.data.get('checklist', []):
+            if not check.get('pass'):
+                lines.append(f"  failed: {check['item']}: {check.get('fix', '')}")
+        for name, proc in (self.data.get('processes') or {}).items():
+            if isinstance(proc, dict) and 'running' in proc:
+                lines.append(f"  {name}: {'running' if proc['running'] else 'stopped'}")
         for w in self.warnings:
             lines.append(f"  warning: {w}")
         if self.needs_human:
