@@ -24,7 +24,7 @@
     "git": "https://github.com/reaxlabs/reax-subnet",
     "ref": "v1.1.0-rc2",
     "public": false,
-    "commit": "3fa3ed841d9ff3e33abe8353aa87897db21eb0e9"
+    "commit": "be382d65063e4105d9a99a40881c14931830f6f8"
   },
   "pools": [
     {

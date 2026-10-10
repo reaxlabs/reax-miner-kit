@@ -150,6 +150,24 @@ class InstallTest(unittest.TestCase):
         run.assert_not_called()
     def test_tool_detail_masks_tokens(self):
         self.assertEqual(install.detail('fatal: bad ghp_' + 'A' * 20), 'fatal: bad ghp_***')
+        self.assertEqual(install.detail('fatal: bad gho_' + 'B' * 20), 'fatal: bad gho_***')
+        masked = install.detail("fatal: unable to access 'https://x-access-token:secret123@github.com/a/b/'")
+        self.assertNotIn('secret123', masked)
+        self.assertIn('https://***@github.com', masked)
+        self.assertNotIn('pw123', install.detail('error: https://user:pw123@host/x'))
+        self.assertNotIn('abc.def', install.detail('error: Authorization: Bearer abc.def'))
+        self.assertNotIn('xyz', install.detail('error: authorization: xyz'))
+        self.assertEqual(install.detail('error: token file missing'), 'error: token file missing')
+    def test_symlinked_venv_is_never_cleared(self):
+        target = self.home / 'elsewhere'
+        target.mkdir(parents=True)
+        (target / 'keep').touch()
+        (self.home / 'venv').symlink_to(target)
+        with patch.object(install, 'runner') as run:
+            result = install.prepare_tools(self.home, D)
+        self.assertEqual(result.code(), 10)
+        run.assert_not_called()
+        self.assertTrue((target / 'keep').exists())
     def test_low_disk_stops_before_tools(self):
         with patch.object(install, 'descriptor', return_value=D), patch.object(install.shutil, 'disk_usage', return_value=SimpleNamespace(free=1)), patch.object(install, 'runner') as run:
             self.assertEqual(install.install(args(self.home)).code(), 10)

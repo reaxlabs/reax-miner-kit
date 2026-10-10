@@ -33,7 +33,10 @@ def detail(err):
     """Last stderr line of a failed tool, bounded and with tokens masked."""
     lines = err.strip().splitlines() or ['']
     line = next((x for x in reversed(lines) if x.lower().startswith(('fatal:', 'error:'))), lines[-1])
-    return re.sub(r'(hf_|ghp_|github_pat_)[A-Za-z0-9_]{8,}', r'\1***', line)[:300]
+    line = re.sub(r'(hf_|gh[opsur]_|github_pat_)[A-Za-z0-9_]{8,}', r'\1***', line)
+    line = re.sub(r'://[^/@\s]+@', '://***@', line)  # credentials embedded in a URL
+    line = re.sub(r'(?i)\b(bearer|basic)\s+\S+', r'\1 ***', line)
+    return re.sub(r'(?i)(authorization:)\s+(?!bearer\b|basic\b)\S+', r'\1 ***', line)[:300]
 
 
 def home_of(args):
@@ -148,6 +151,8 @@ def prepare_tools(home, d):
     py = home / 'venv/bin/python'
     # A venv created without ensurepip has a python but no pip; recreate it once venv support exists.
     if not py.exists() or not (home / 'venv/bin/pip').exists():
+        if (home / 'venv').is_symlink():  # never empty a directory the kit does not own
+            return Result('install', 'blocked', '{} is a symlink; remove it and retry install.'.format(home / 'venv'), exit_code=10)
         rc, _, _ = runner([sys.executable, '-I', '-m', 'venv', '--clear', str(home / 'venv')])
         if rc:
             return Result('install', 'blocked', 'Python venv support is missing. On Debian/Ubuntu run: sudo apt-get install -y python3-venv, then retry install.', exit_code=10)

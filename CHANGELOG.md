@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Fresh-machine fixes: README apt line includes `python3-venv`; `doctor` reports missing venv support and Pythons without tarfile extraction filters (needed by the rehearsal) before anything is installed; a pip-less venv from an earlier failed attempt is recreated instead of failing every retry.
+- Failures of git, pip and the weights download show their reason (`detail`), with tokens and URL credentials masked.
+- Text output shows plan steps, failed `verify` checks and localnet processes; `localnet up` suggests the next commands; `net-policy` lists the ghcr.io and PyPI downloads of the first rehearsal.
+- Release descriptor pins the current subnet source commit.
+
 ## 0.1.5
 
 Trust the `reaxlabs` GitHub organisation as the source and image owner. Update the bundled source and image references for the repository move. The default descriptor URL is the `main` branch of this repository.
