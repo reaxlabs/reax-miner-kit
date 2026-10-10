@@ -46,6 +46,29 @@ class DoctorTests(unittest.TestCase):
             result = diagnose(args, probe=lambda cmd, timeout: commands.get(' '.join(cmd), {'returncode': 127, 'stdout': '', 'stderr': ''}), host=fixture['host'])
         self.assertIn('docker_daemon', [b['id'] for b in result.data['blockers']])
 
+    def test_missing_venv_support_blocks_rehearsal_with_package_hint(self):
+        fixture = json.loads((FIXTURES / 'core_4090.json').read_text())
+        host = dict(fixture['host'], python_venv=False)
+        with tempfile.TemporaryDirectory() as tmp:
+            args = argparse.Namespace(home=tmp, mode=None, pool=None, probe_ip=False)
+            result = diagnose(args, probe=lambda cmd, timeout: fixture['commands'].get(' '.join(cmd), {'returncode': 127, 'stdout': '', 'stderr': ''}), host=host)
+        blocker = next(b for b in result.data['blockers'] if b['id'] == 'python_venv')
+        self.assertIn('python3-venv', blocker['fix'])
+        self.assertFalse(result.data['rehearsal_capable'])
+        self.assertIn('python3-venv', result.render_text())
+
+    def test_host_facts_report_venv_support(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertIsInstance(sysprobe.facts(tmp, 0)['python_venv'], bool)
+
+    def test_plan_text_lists_steps(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            args = argparse.Namespace(home=tmp, mode='localnet', pool=None, probe_ip=False, offline=True)
+            with patch('reaxlib.cmd_doctor.diagnose', return_value=diagnose(args, probe=lambda cmd, timeout: {'returncode': 127, 'stdout': '', 'stderr': ''}, host=json.loads((FIXTURES / 'core_4090.json').read_text())['host'])):
+                text = plan(args).render_text()
+        self.assertIn('  1. doctor [agent]: reaxctl doctor', text)
+        self.assertIn('reaxctl install --pool s1-fast --mode localnet', text)
+
     def test_unverifiable_clock_is_a_warning_not_a_blocker(self):
         fixture = json.loads((FIXTURES / 'core_4090.json').read_text())
         commands = {k: v for k, v in fixture['commands'].items() if not k.startswith(('timedatectl', 'chronyc'))}

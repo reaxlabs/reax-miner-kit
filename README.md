@@ -16,10 +16,10 @@ Read this before you spend anything.
 
 ## Quickstart for people
 
-Start at https://reax.dev/mine/ for the guide and current launch status. On Ubuntu/Debian the controller needs only `git` and `python3` (3.8 or newer):
+Start at https://reax.dev/mine/ for the guide and current launch status. On Ubuntu/Debian the controller needs only `git` and `python3` (3.8 or newer); `install` and the rehearsal also need `python3-venv` (Python 3.10 or newer), which Debian and Ubuntu package separately:
 
 ```sh
-sudo apt-get update && sudo apt-get install -y git python3
+sudo apt-get update && sudo apt-get install -y git python3 python3-venv
 git clone https://github.com/reaxlabs/reax-miner-kit.git && cd reax-miner-kit
 ```
 
@@ -31,7 +31,7 @@ Then verify the release (see [Releases, pins and verification](#releases-pins-an
 ./reaxctl net-policy --json
 ```
 
-The rehearsal needs the pinned subnet source. Clone it from the descriptor's `source.git` at `source.ref` (or wait until the descriptor marks the source public, after which `install` fetches it itself), set `REAX_SOURCE_DIR` to its absolute path, then:
+`doctor` reports whether the rehearsal is possible yet. The rehearsal needs the pinned subnet source. While the descriptor marks the source as not public (`source.public: false`), the repository at `source.git` is not reachable and `install` stops with exit code 12; `doctor`, `plan` and `net-policy` are what you can run until then. Once the source is public, `install` clones `source.git`, checks out `source.ref` and checks `source.commit` itself. To use a checkout you have already reviewed instead, set `REAX_SOURCE_DIR` to its absolute path. Then:
 
 ```sh
 ./reaxctl install --mode localnet
@@ -41,7 +41,7 @@ The rehearsal needs the pinned subnet source. Clone it from the descriptor's `so
 ./reaxctl localnet down
 ```
 
-The rehearsal runs a local chain, a hash runtime miner and a validator using disposable development identities and test TAO. It demonstrates the onboarding flow; it does not measure production model serving. The first run fetches a pinned native chain image and installs tool dependencies. State defaults to `~/.reax-miner`; `--home /absolute/path` or `REAX_HOME` selects another location. Existing user wallets stay in `~/.bittensor/wallets`.
+The rehearsal runs a local chain, a hash runtime miner and a validator using disposable development identities and test TAO. It demonstrates the onboarding flow; it does not measure production model serving. `verify` passes once the validator has scored the miner, usually within a minute of `localnet up`; until then it exits 20 and names the failed check, so wait and run it again. The first run fetches a pinned native chain image (about 110 MB from ghcr.io) and installs tool dependencies from PyPI (about 140 MB unpacked); on a typical connection install plus the first `localnet up` take a few minutes. State defaults to `~/.reax-miner`; `--home /absolute/path` or `REAX_HOME` selects another location. Existing user wallets stay in `~/.bittensor/wallets`.
 
 ## Quickstart for agents
 

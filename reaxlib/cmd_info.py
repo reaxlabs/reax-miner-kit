@@ -41,13 +41,13 @@ def net_policy(args):
         local_chain = 'ws://127.0.0.1:' + str(config.get('base_port', 19951))
     endpoints = [
         {'url': descriptor.url(), 'purpose': 'release descriptor', 'condition': 'doctor/plan/install/register/start/update unless --offline or REAX_OFFLINE=1; one-hour cache'},
-        {'url': 'https://ghcr.io', 'purpose': 'pinned Docker images', 'condition': 'install or update'},
+        {'url': 'https://ghcr.io', 'purpose': 'pinned Docker images and native localnet chain image', 'condition': 'install or update; first localnet up'},
         {'url': 'https://huggingface.co', 'purpose': 'pinned model weights and reachability', 'condition': 'install or doctor --probe-ip'},
         {'url': 'https://cdn-lfs.huggingface.co', 'purpose': 'weight downloads', 'condition': 'Hugging Face download redirect'},
         {'url': 'https://cas-bridge.xethub.hf.co', 'purpose': 'weight downloads', 'condition': 'Hugging Face download redirect'},
         {'url': release['source']['git'], 'purpose': 'pinned rehearsal source', 'condition': 'localnet install'},
-        {'url': 'https://pypi.org', 'purpose': 'pinned wallet/tools packages', 'condition': 'install tool venv'},
-        {'url': 'https://files.pythonhosted.org', 'purpose': 'tool package downloads', 'condition': 'install tool venv'},
+        {'url': 'https://pypi.org', 'purpose': 'pinned wallet/tools packages', 'condition': 'install tool venv; localnet up rehearsal dependency'},
+        {'url': 'https://files.pythonhosted.org', 'purpose': 'tool package downloads', 'condition': 'install tool venv; localnet up rehearsal dependency'},
         {'url': local_chain, 'purpose': 'local rehearsal chain', 'condition': 'localnet'},
         {'url': 'wss://entrypoint-finney.opentensor.ai:443', 'purpose': 'mainnet chain', 'condition': 'live descriptor and human-approved mainnet'},
         {'url': 'wss://test.finney.opentensor.ai:443', 'purpose': 'testnet chain', 'condition': 'live descriptor and testnet netuid'},

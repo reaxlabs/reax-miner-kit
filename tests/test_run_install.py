@@ -101,10 +101,48 @@ class InstallTest(unittest.TestCase):
     def test_tools_satisfied_skips_pip(self):
         (self.home / 'venv/bin').mkdir(parents=True)
         (self.home / 'venv/bin/python').touch()
+        (self.home / 'venv/bin/pip').touch()
         with patch.object(install, 'runner', return_value=(0,'','')) as run:
             install.prepare_tools(self.home, D)
         self.assertEqual(run.call_count, 1)
         self.assertIn('bittensor==11.1.0', run.call_args[0][0])
+    def test_venv_without_pip_is_recreated(self):
+        # python3 -m venv without ensurepip leaves bin/python but no pip behind
+        (self.home / 'venv/bin').mkdir(parents=True)
+        (self.home / 'venv/bin/python').touch()
+        with patch.object(install, 'runner', return_value=(0,'','')) as run:
+            install.prepare_tools(self.home, D)
+        self.assertEqual(run.call_args_list[0][0][0][-3:], ['venv', '--clear', str(self.home / 'venv')])
+    def test_missing_venv_support_names_package(self):
+        with patch.object(install, 'runner', return_value=(1,'','')):
+            result = install.prepare_tools(self.home, D)
+        self.assertEqual(result.code(), 10)
+        self.assertIn('python3-venv', result.summary)
+    def test_failed_tool_install_reports_detail(self):
+        (self.home / 'venv/bin').mkdir(parents=True)
+        (self.home / 'venv/bin/python').touch()
+        (self.home / 'venv/bin/pip').touch()
+        with patch.object(install, 'runner', side_effect=[(1,'',''), (1,'','Collecting x\nERROR: No matching distribution found for bittensor==11.1.0\n')]):
+            result = install.prepare_tools(self.home, D)
+        self.assertEqual(result.code(), 13)
+        self.assertEqual(result.data['detail'], 'ERROR: No matching distribution found for bittensor==11.1.0')
+        self.assertIn('detail: ERROR: No matching', result.render_text())
+    def test_failed_source_clone_reports_git_reason(self):
+        d = copy.deepcopy(D)
+        d['source']['public'] = True
+        err = "Cloning into 'source'...\nfatal: unable to access 'https://github.com/reaxlabs/reax-subnet/': Could not resolve host: github.com\n"
+        with patch.dict(install.os.environ, {'REAX_SOURCE_DIR': ''}), patch.object(install, 'runner', return_value=(128,'',err)):
+            source, result = install.prepare_source(self.home, d)
+        self.assertIsNone(source)
+        self.assertIn('Could not resolve host', result.data['detail'])
+    def test_prelaunch_localnet_install_names_only_the_source(self):
+        with patch.dict(install.os.environ, {'REAX_SOURCE_DIR': ''}), patch.object(install, 'descriptor', return_value=D), patch.object(install, 'runner') as run:
+            result = install.install(args(self.home, mode='localnet'))
+        self.assertEqual(result.code(), 12)
+        self.assertIn('mark the REAX source as public', result.summary)
+        run.assert_not_called()
+    def test_tool_detail_masks_tokens(self):
+        self.assertEqual(install.detail('fatal: bad ghp_' + 'A' * 20), 'fatal: bad ghp_***')
     def test_low_disk_stops_before_tools(self):
         with patch.object(install, 'descriptor', return_value=D), patch.object(install.shutil, 'disk_usage', return_value=SimpleNamespace(free=1)), patch.object(install, 'runner') as run:
             self.assertEqual(install.install(args(self.home)).code(), 10)

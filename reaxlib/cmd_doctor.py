@@ -101,6 +101,9 @@ def diagnose(args, probe=None, host=None, release=None):
     rehearsal = python_version >= python_min
     if not rehearsal:
         block('python', 'The rehearsal requires Python ' + req['python_min'] + ' or newer.', 'Install the required Python version: https://www.python.org/downloads/')
+    elif not host.get('python_venv', True):
+        rehearsal = False
+        block('python_venv', 'Python venv support (ensurepip) is missing; install cannot create the tool environment.', 'On Debian/Ubuntu run: sudo apt-get install -y python3-venv')
     eligible = []
     for pool in release['pools']:
         active = pool['enabled_at_launch'] or getattr(args, 'pool', None) == pool['id']

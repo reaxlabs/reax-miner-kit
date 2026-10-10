@@ -7,6 +7,7 @@ import re
 import time
 from urllib.parse import urlparse
 from pathlib import Path
+import urllib.error
 import urllib.request
 
 from . import state
@@ -224,8 +225,9 @@ def load(args=None, fetch=False, timeout=5):
             state.write_json(cache, candidate)
             state.write_json(cache.parent / 'fetched_at', {'at': time.time()})
             value, _source = candidate, 'fetched'
-        except (OSError, ValueError, TypeError):
-            _warnings.append('Release fetch or validation failed; using validated ' + _source + ' descriptor.')
+        except (OSError, ValueError, TypeError) as exc:
+            reason = re.sub(r'\s+', ' ', str(exc.reason if type(exc) is urllib.error.URLError else exc))[:120]
+            _warnings.append('Release fetch or validation failed (' + reason + '); using validated ' + _source + ' descriptor.')
     installed = state.load_config(args).get('release_id')
     old, minimum = release_key(installed), release_key(value['minimum_release'])
     if old and minimum and old < minimum:

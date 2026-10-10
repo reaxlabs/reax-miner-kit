@@ -43,6 +43,27 @@ class DescriptorTests(unittest.TestCase):
                 self.assertEqual(descriptor.load(args, fetch=True)['release_id'], 'test-release')
             self.assertEqual(descriptor.load(args)['release_id'], 'test-release')
 
+    def test_fetch_failure_warning_names_the_reason(self):
+        import urllib.error
+        with tempfile.TemporaryDirectory() as tmp:
+            args = argparse.Namespace(home=tmp)
+            missing = urllib.error.HTTPError(descriptor.url(), 404, 'Not Found', {}, None)
+            with patch.dict('os.environ', REAX_OFFLINE='0'), patch('urllib.request.OpenerDirector.open', side_effect=missing):
+                descriptor.begin(args)
+                descriptor.load(args, fetch=True)
+                self.assertIn('Release fetch or validation failed (HTTP Error 404: Not Found); using validated bundled descriptor.', descriptor.warnings())
+            offline = urllib.error.URLError(OSError(-2, 'Name or service not known'))
+            with patch.dict('os.environ', REAX_OFFLINE='0'), patch('urllib.request.OpenerDirector.open', side_effect=offline):
+                descriptor.begin(args)
+                descriptor.load(args, fetch=True)
+                self.assertIn('Release fetch or validation failed ([Errno -2] Name or service not known); using validated bundled descriptor.', descriptor.warnings())
+
+    def test_net_policy_discloses_localnet_downloads(self):
+        args = build_parser().parse_args(['net-policy', '--json'])
+        endpoints = {e['url']: e['condition'] for e in args.func(args).data['endpoints']}
+        self.assertIn('localnet up', endpoints['https://ghcr.io'])
+        self.assertIn('localnet up', endpoints['https://pypi.org'])
+
     def test_registered_starting_soon_records_netuid_without_opening_gates(self):
         value = registered_pending_release()
         self.assertEqual(value['status']['launch_status'], 'registered_starting_soon')

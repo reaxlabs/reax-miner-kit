@@ -28,6 +28,13 @@ def runner(cmd, timeout=120, env=None, spawn=False, log=None, foreground=False):
         return 13, '', str(e)
 
 
+def detail(err):
+    """Last stderr line of a failed tool, bounded and with tokens masked."""
+    lines = err.strip().splitlines() or ['']
+    line = next((x for x in reversed(lines) if x.lower().startswith(('fatal:', 'error:'))), lines[-1])
+    return re.sub(r'(hf_|ghp_|github_pat_)[A-Za-z0-9_]{8,}', r'\1***', line)[:300]
+
+
 def home_of(args):
     from .state import home
     return home(args)
@@ -115,17 +122,18 @@ def prepare_source(home, d):
     else:
         source = home / 'source'
     if not (source / '.git').exists():
-        rc, _, _ = runner(['git', 'clone', '--no-checkout', '--', d['source']['git'], str(source)], timeout=300)
+        rc, _, err = runner(['git', 'clone', '--no-checkout', '--', d['source']['git'], str(source)], timeout=300)
         if rc:
-            return None, Result('install', 'error', 'Source download failed.', exit_code=13)
+            return None, Result('install', 'error', 'Source download failed.', data={'detail': detail(err)}, exit_code=13)
     rc, origin, _ = runner(['git', '-C', str(source), 'config', '--get', 'remote.origin.url'])  # raw value: `remote get-url` applies insteadOf rewrites
     if rc or origin.strip() != d['source']['git']:
         return None, Result('install', 'blocked', 'Existing source origin differs from descriptor.', exit_code=10)
-    if runner(['git', '-C', str(source), 'fetch', '--tags', 'origin'])[0]:
-        return None, Result('install', 'error', 'Source tag fetch failed.', exit_code=13)
-    rc, _, _ = runner(['git', '-C', str(source), 'checkout', '--detach', d['source']['ref'], '--'])
+    rc, _, err = runner(['git', '-C', str(source), 'fetch', '--tags', 'origin'])
     if rc:
-        return None, Result('install', 'error', 'Pinned source checkout failed.', exit_code=13)
+        return None, Result('install', 'error', 'Source tag fetch failed.', data={'detail': detail(err)}, exit_code=13)
+    rc, _, err = runner(['git', '-C', str(source), 'checkout', '--detach', d['source']['ref'], '--'])
+    if rc:
+        return None, Result('install', 'error', 'Pinned source checkout failed.', data={'detail': detail(err)}, exit_code=13)
     if d['source'].get('commit'):
         rc, commit, _ = runner(['git', '-C', str(source), 'rev-parse', 'HEAD'])
         if rc or commit.strip().lower() != d['source']['commit'].lower():
@@ -137,18 +145,19 @@ def prepare_tools(home, d):
     from .descriptor import validate
     validate(d)
     py = home / 'venv/bin/python'
-    if not py.exists():
-        rc, _, _ = runner([sys.executable, '-I', '-m', 'venv', str(home / 'venv')])
+    # A venv created without ensurepip has a python but no pip; recreate it once venv support exists.
+    if not py.exists() or not (home / 'venv/bin/pip').exists():
+        rc, _, _ = runner([sys.executable, '-I', '-m', 'venv', '--clear', str(home / 'venv')])
         if rc:
-            return Result('install', 'blocked', 'Install Python venv support and retry.', exit_code=10)
+            return Result('install', 'blocked', 'Python venv support is missing. On Debian/Ubuntu run: sudo apt-get install -y python3-venv, then retry install.', exit_code=10)
     specs = [k + (v if v.startswith(('=', '<', '>', '~', '!')) else '==' + v) for k, v in d.get('tools', {}).items()]
     # pip's resolver verifies descriptor constraints even when the venv predates this tool.
     check = "import importlib.metadata as m; from packaging.requirements import Requirement; import sys; rs=[Requirement(x) for x in sys.argv[1:]]; sys.exit(0 if all(m.version(r.name) in r.specifier for r in rs) else 1)"
     rc, _, _ = runner([str(py), '-I', '-c', check] + specs)
     if rc:
-        rc, _, _ = runner([str(py), '-I', '-m', 'pip', '--isolated', 'install', '--index-url', 'https://pypi.org/simple'] + specs, timeout=900)
+        rc, _, err = runner([str(py), '-I', '-m', 'pip', '--isolated', 'install', '--index-url', 'https://pypi.org/simple'] + specs, timeout=900)
         if rc:
-            return Result('install', 'error', 'Pinned tool installation failed; retry install.', exit_code=13)
+            return Result('install', 'error', 'Pinned tool installation failed; retry install.', data={'detail': detail(err)}, exit_code=13)
     mark(home, 'tools', {'requirements': specs})
 
 
@@ -255,7 +264,8 @@ def install(args):
         if not d['images'].get('public') and not os.environ.get('REAX_SOURCE_DIR'):
             return Result('install', 'blocked', 'Release images are not yet marked available; supply REAX_SOURCE_DIR for a local build.', exit_code=12)
     if (mode == 'localnet' or not d['images'].get('public')) and not (os.environ.get('REAX_SOURCE_DIR') or read_config(home).get('source_dir') or d['source'].get('public')):
-        return Result('install', 'blocked', 'The release descriptor does not yet mark the REAX source and images as available, so the rehearsal cannot run without REAX_SOURCE_DIR. Doctor, plan and wallet guidance work today; see https://reax.dev/mine/ for status.',
+        missing = 'source' if mode == 'localnet' else 'source and images'
+        return Result('install', 'blocked', 'The release descriptor does not yet mark the REAX {} as public, so this cannot run until launch unless REAX_SOURCE_DIR points to a subnet checkout you have reviewed. Doctor, plan and wallet guidance work today; see https://reax.dev/mine/ for status.'.format(missing),
                       exit_code=12, next=[{'command': 'reaxctl doctor', 'why': 'Check this machine.'}])
     from .state import private_dir
     private_dir(home)
@@ -311,8 +321,7 @@ def install(args):
                              'The gated model requires account access; reaxctl never asks for your token.',
                              ['Accept access on the model page.', str(home / 'venv/bin/hf') + ' auth login', 'Retry reaxctl install.'],
                              'https://huggingface.co/' + pool['weights']['repo'])
-            detail = re.sub(r'hf_[A-Za-z0-9]{8,}', 'hf_***', (hf_err.strip().splitlines() or [''])[-1])[:300]
-            return Result('install', 'error', 'Pinned weights download failed; retry install.', data={'detail': detail}, exit_code=13)
+            return Result('install', 'error', 'Pinned weights download failed; retry install.', data={'detail': detail(hf_err)}, exit_code=13)
         mark(home, 'weights', pool['weights'])
     mark(home, 'install', {'release_id': d['release_id'], 'mode': mode})
     return Result('install', summary='Installation prepared.', data={'home': str(home), 'mode': mode, 'token_path': str(secret)},

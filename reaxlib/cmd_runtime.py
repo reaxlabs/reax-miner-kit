@@ -156,8 +156,9 @@ def verify(args, home, config):
     item('manifest', pool and h.get('manifest_id') == pool['manifest_id'], 'Use the selected pool and pinned weights/runtime.')
     item('registration', data.get('registered') is True, 'Complete hotkey registration on the installed network.')
     item('commitment', data.get('commitment_published') is True, 'Wait for commitment publication; inspect logs for chain errors.')
-    item('validator rounds', data.get('validator_rounds_seen'), 'Wait for a validator round and inspect logs.')
-    if config.get('mode', 'localnet') == 'localnet':
+    localnet = config.get('mode', 'localnet') == 'localnet'
+    item('validator rounds', data.get('validator_rounds_seen'), 'Rehearsal rounds run every 10 seconds; rerun reaxctl verify in a minute, then inspect reaxctl logs.' if localnet else 'Wait for a validator round and inspect logs.')
+    if localnet:
         item('clock synchronization', True, '')  # all rehearsal processes use the same host clock
     else:
         rc, out, _ = io.runner(['timedatectl', 'show', '-p', 'NTPSynchronized', '--value'])

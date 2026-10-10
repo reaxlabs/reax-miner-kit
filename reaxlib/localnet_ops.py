@@ -184,9 +184,7 @@ def up(args):
         return Result('localnet up', 'blocked', 'Rehearsal requires localnet mode.', exit_code=10)
     records = processes(home)
     if set(records) == {'node-one', 'node-two', 'node-three', 'miner', 'validator'} and all(alive(r) for r in records.values()):
-        result = status(home)
-        result.command = 'localnet up'
-        return result
+        return started(home)
     down(home)
     d = io.descriptor(home)
     source, failure = io.prepare_source(home, d)
@@ -313,15 +311,22 @@ def up(args):
                       source_dir=str(source), miner_host=host)
         io.write_config(home, config)
         io.mark(home, 'localnet', {'endpoint': endpoint, 'netuid': subnet['netuid']})
-        result = status(home)
-        result.command = 'localnet up'
-        return result
+        return started(home)
     except KeyboardInterrupt:
         down(home)
         raise
     except Exception as e:
         down(home)
         return Result('localnet up', 'error', str(e), exit_code=13)
+
+
+def started(home):
+    result = status(home)
+    result.command = 'localnet up'
+    result.summary = 'Rehearsal started.'
+    result.next = [{'command': 'reaxctl wallet status', 'why': 'Show the rehearsal public addresses.'},
+                   {'command': 'reaxctl verify', 'why': 'Passes after the first validator rounds, usually within a minute.'}]
+    return result
 
 
 def status(home):
