@@ -61,7 +61,8 @@ gated,size_gb}, manifest_id, commitment, gpu{min_vram_gb,max_vram_gb,count,vendo
   `reax-selfcheck` (640 reference decisions, scored with the validator's release constants) in the installed miner image with only
   the runtime token mounted and the miner's model/sidecar settings. No wallet, chain or registration needed. Exit 0 pass, 20 fail
   (with distances, simulated round score/strike shares and decisions/s), 10 when it cannot run (localnet, sidecar not healthy yet,
-  installed release without `reax-selfcheck`). `verify --selfcheck` adds it as a checklist item without starting containers.
+  installed release without `reax-selfcheck`, missing token file, non-loopback runtime URL). The check container is named and removed
+  after a timeout (15 minutes); it warns when the miner is already serving. `verify --selfcheck` adds it as a checklist item without starting containers.
 - `wallet hotkey [--wallet-name reax] [--hotkey-name miner1]` — creates a hotkey-only wallet (no coldkey!) using the tool venv;
   prints the SS58 address, never the phrase. `wallet coldkeypub --ss58 <addr>` writes `coldkeypub.txt` (public) with the stdlib
   SS58→public-key conversion; verifies checksum. `wallet status` — which files exist, permissions, addresses.

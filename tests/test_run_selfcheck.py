@@ -189,6 +189,14 @@ class SelfcheckTest(unittest.TestCase):
         self.assertEqual(rc, 10)
         self.assertFalse(any(c[:2] == ['docker', 'run'] for c in fake.calls))
 
+    def test_loopback_url_accepts_only_loopback_hosts(self):
+        self.assertTrue(cmd_selfcheck.loopback_url('http://127.0.0.1:8101'))
+        self.assertTrue(cmd_selfcheck.loopback_url('http://localhost:8101'))
+        self.assertTrue(cmd_selfcheck.loopback_url('http://[::1]:8101'))
+        self.assertFalse(cmd_selfcheck.loopback_url('http://127.0.0.1.evil.test:8101'))
+        self.assertFalse(cmd_selfcheck.loopback_url('http://user@127.0.0.1:8101'))
+        self.assertFalse(cmd_selfcheck.loopback_url('file:///etc/passwd'))
+
     def test_container_is_named_and_removed_even_after_a_timeout(self):
         fake = FakeDocker((13, '', 'timed out'))
         rc, out = self.call(fake)
