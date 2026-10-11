@@ -41,6 +41,13 @@ for real networks; never publish sidecar ports 8101/8102/8000. Run `wallet statu
 and complete human registration before starting a real miner. Variable subnet
 emissions can be zero.
 
+`selfcheck --json` (testnet/mainnet) checks the runtime before registration: it starts
+only the runtime sidecar if it is stopped, waits for it to be healthy (rerun while it
+loads), then runs the release's `reax-selfcheck` in the installed miner image with the
+runtime token and the miner's model/sidecar settings, no wallet mounts. Exit 0 pass,
+20 fail, 10 when it cannot run. The check loads the GPU for about a minute, so `verify`
+runs it only with `--selfcheck`. Run it before the miner starts serving: on a serving miner it shares the GPU with live validator requests (it warns).
+
 `start`, `stop`, `restart` and `run` manage the installed mode. `run` keeps the
 supervisor in the foreground. `status --json` returns processes/containers, health,
 and log-derived registration/commitment/round evidence (unknown values stay null).

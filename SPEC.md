@@ -57,6 +57,12 @@ gated,size_gb}, manifest_id, commitment, gpu{min_vram_gb,max_vram_gb,count,vendo
 - `install [--pool s1-fast] [--mode localnet|testnet|mainnet] [--yes]` — creates `$REAX_HOME`, tool venv, runtime token, renders
   `compose.yml`+`miner.env`, pulls images by digest (docker) or prepares the no-docker rehearsal from `source`, downloads the pinned
   weights (docker modes only) with a size/disk preflight. Resumable.
+- `selfcheck [--no-start]` — testnet/mainnet only: starts the runtime sidecar alone if it is stopped, then runs the release's
+  `reax-selfcheck` (640 reference decisions, scored with the validator's release constants) in the installed miner image with only
+  the runtime token mounted and the miner's model/sidecar settings. No wallet, chain or registration needed. Exit 0 pass, 20 fail
+  (with distances, simulated round score/strike shares and decisions/s), 10 when it cannot run (localnet, sidecar not healthy yet,
+  installed release without `reax-selfcheck`, missing token file, non-loopback runtime URL). The check container is named and removed
+  after a timeout (15 minutes); it warns when the miner is already serving. `verify --selfcheck` adds it as a checklist item without starting containers.
 - `wallet hotkey [--wallet-name reax] [--hotkey-name miner1]` — creates a hotkey-only wallet (no coldkey!) using the tool venv;
   prints the SS58 address, never the phrase. `wallet coldkeypub --ss58 <addr>` writes `coldkeypub.txt` (public) with the stdlib
   SS58→public-key conversion; verifies checksum. `wallet status` — which files exist, permissions, addresses.
@@ -78,7 +84,7 @@ gated,size_gb}, manifest_id, commitment, gpu{min_vram_gb,max_vram_gb,count,vendo
 - `spec` (prints this machine spec: commands, modes, step graph), `agent-rules`, `net-policy`, `version`.
 
 ## Step graph (what an agent follows; also published as /mine.json)
-doctor → choose mode (default localnet rehearsal) → install → wallet hotkey → [human] create coldkey (Talisman/btcli on another machine) →
+doctor → choose mode (default localnet rehearsal) → install → selfcheck (real networks only) → wallet hotkey → [human] create coldkey (Talisman/btcli on another machine) →
 wallet coldkeypub → [human] fund + register (reax.dev/register or btcli) → start → verify → service install → update timer.
 Mainnet steps are listed but blocked while `status.live=false`.
 
