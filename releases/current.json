@@ -1,7 +1,7 @@
 {
   "schema": "reax-release/1",
   "release_id": "1.1.0rc2",
-  "updated": "2026-10-09",
+  "updated": "2026-10-14",
   "status": {
     "launch_status": "registered_starting_soon",
     "live": false,
@@ -15,15 +15,19 @@
     "miner": "ghcr.io/reaxlabs/reax-miner",
     "s1_fast_runtime": "ghcr.io/reaxlabs/reax-s1-fast-runtime",
     "s1_pro_runtime": "ghcr.io/reaxlabs/reax-s1-pro-runtime",
-    "tag": null,
-    "digests": null,
+    "tag": "1.1.0-rc2",
+    "digests": {
+      "miner": "sha256:8811d0a84e824e7fa352e11d986a8c721b6ac93c91b45264e64ebaafa0510a38",
+      "s1_fast_runtime": "sha256:a81d7d897a4d3c31be6edd45a82e988bce65834fd30d28eba5dca88eb8d7a8c8",
+      "s1_pro_runtime": "sha256:0875c4d98a82b7b3bb9e261f919bd632dfa291424ea239fb140261d8210f2841"
+    },
     "public": false,
-    "note": "Tag and digests are filled in when the images are published."
+    "note": "Tag and digests are recorded; the images become pullable when images.public is true."
   },
   "source": {
     "git": "https://github.com/reaxlabs/reax-subnet",
     "ref": "v1.1.0-rc2",
-    "public": false,
+    "public": true,
     "commit": "e5fbb76ffee6b147cf931ca0be824e34e7c9b1a0"
   },
   "pools": [
