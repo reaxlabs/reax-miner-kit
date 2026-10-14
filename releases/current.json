@@ -3,12 +3,28 @@
   "release_id": "1.1.0rc2",
   "updated": "2026-10-14",
   "status": {
-    "launch_status": "registered_starting_soon",
-    "live": false,
+    "launch_status": "live",
+    "live": true,
     "netuid": 92,
     "network": "finney",
     "testnet_netuid": null,
-    "notes": "Chain status and release availability are reported separately. Real-network actions require status.live=true; source and images are independently gated by their public availability fields. Localnet rehearsal needs a subnet source checkout when source.public=false. Testnet requires its own configured netuid."
+    "notes": "REAX Finney netuid 92 has started: alpha trading and alpha epochs are enabled. TAO emission share additionally requires the root-controlled emission flag. Source, images and public launch retain their separate release gates.",
+    "chain": {
+      "netuid": 92,
+      "network": "finney",
+      "sdk": "11.3.0",
+      "genesis_hash": "0x2f0555cc76fc2840a25a6ea3b9637146806f1f44b090c175ffde2a7e5ab36c03",
+      "block": 9282858,
+      "block_hash": "0x303588ae34c69f5e75b0f45a99f38c64cada76d8fbf91a92e9f9157388c1dab9",
+      "block_time": "2026-10-14T16:55:12+00:00",
+      "checked_at": "2026-10-14T16:55:47.075179+00:00",
+      "exists": true,
+      "owner": "5GMxpAvB9iJkDtNDELhVn8GmbBz5XChnWcLaThWTJ38QmU6B",
+      "subtoken_enabled": true,
+      "first_emission_block": 9280309,
+      "subnet_emission_enabled": false,
+      "registration_allowed": true
+    }
   },
   "minimum_release": "1.1.0rc2",
   "images": {
