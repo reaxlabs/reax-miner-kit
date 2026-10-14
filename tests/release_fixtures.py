@@ -16,7 +16,7 @@ def registered_pending_release():
         testnet_netuid=None,
         notes='Chain status and release availability are reported separately.',
     )
-    value['images']['public'] = False
+    value['images'].update(public=False, tag=None, digests=None)
     value['source']['public'] = False
     return value
 

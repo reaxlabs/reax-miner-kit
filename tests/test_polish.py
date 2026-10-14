@@ -210,7 +210,8 @@ class PolishTests(unittest.TestCase):
             home = Path(tmp) / 'home'
             args = argparse.Namespace(home=str(home), mode='localnet', pool='s1-fast', confirm_mainnet=False)
             env = {k: v for k, v in cmd_install.os.environ.items() if k != 'REAX_SOURCE_DIR'}
-            with patch.object(cmd_install.sys, 'version_info', (3, 10, 12)), patch.dict(cmd_install.os.environ, env, clear=True):
+            with patch.object(cmd_install.sys, 'version_info', (3, 10, 12)), patch.dict(cmd_install.os.environ, env, clear=True), \
+                    patch('reaxlib.descriptor.load', return_value=registered_pending_release()):
                 result = cmd_install.install(args)
             self.assertEqual(result.code(), 12)
             self.assertIn('does not yet mark the REAX source', result.summary)
