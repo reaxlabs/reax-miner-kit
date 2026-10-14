@@ -21,8 +21,8 @@
       "s1_fast_runtime": "sha256:a81d7d897a4d3c31be6edd45a82e988bce65834fd30d28eba5dca88eb8d7a8c8",
       "s1_pro_runtime": "sha256:0875c4d98a82b7b3bb9e261f919bd632dfa291424ea239fb140261d8210f2841"
     },
-    "public": false,
-    "note": "Tag and digests are recorded; the images become pullable when images.public is true."
+    "public": true,
+    "note": "Pinned by digest; the 1.1.0-rc2 tag is mutable on GHCR."
   },
   "source": {
     "git": "https://github.com/reaxlabs/reax-subnet",
