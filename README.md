@@ -86,7 +86,7 @@ Real mining requires Linux x86_64 with NVIDIA, driver R580+ and the NVIDIA Docke
 
 The kit handles only hotkeys and public coldkey addresses. Never provide a coldkey, recovery phrase or signing authority. It never spends real TAO or signs a real registration payment. A person approves registration in their own wallet. Rehearsal funding uses disposable local development identities. Secret files use mode 0600. No telemetry is sent. Administrator actions are shown explicitly; the kit does not invoke interactive sudo.
 
-Expose only the real miner port (default 8091). Keep runtime ports 8101, 8102 and 8000 private. The rehearsal miner binds a local private IPv4 address; keep its port range within your trusted network.
+Expose only the real miner port (default 8091). Keep runtime ports 8101, 8102, 8103, 8104 and 8000 private. The rehearsal miner binds a local private IPv4 address; keep its port range within your trusted network.
 
 `./reaxctl net-policy --json` lists the configured destinations and conditions. The bundled descriptor currently lists:
 
@@ -100,7 +100,7 @@ Expose only the real miner port (default 8091). Keep runtime ports 8101, 8102 an
 | Loopback chain endpoint | Rehearsal chain (configured port; default localnet base 19951) |
 | `entrypoint-finney.opentensor.ai:443` | Mainnet chain when enabled |
 | `test.finney.opentensor.ai:443` | Testnet chain when enabled |
-| Configured global external IP, ports 8101/8102/8000 | TCP privacy probes only with `verify --probe-ip` |
+| Configured global external IP, ports 8101/8102/8103/8104/8000 | TCP privacy probes only with `verify --probe-ip` |
 | Docker Hub / nvcr.io | Base images when building source Dockerfiles |
 | `api.ipify.org` | Public-IP echo only with `--probe-ip` |
 
@@ -144,7 +144,7 @@ this policy even though they can type the flags. The kit never signs or spends r
 
 Containers retain host networking and must bind sidecars to loopback. Both drop all capabilities,
 set no-new-privileges and rotate json-file logs (10m, three files). The miner port must be an
-integer 1024–65535 excluding 8101, 8102 and 8000. Compose dollar signs are escaped; wallet
+integer 1024–65535 excluding 8101, 8102, 8103, 8104 and 8000. Compose dollar signs are escaped; wallet
 mounts honour REAX_WALLET_DIR. REAX_HOME, secrets and rollback directories are private (0700);
 generated files use atomic replacement with 0600 secrets and 0644 public unit/compose files,
 refusing symlink targets. Hotkey creation sets umask 077 before the wallet backend writes.

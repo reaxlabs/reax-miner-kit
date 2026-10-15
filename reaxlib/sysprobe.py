@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import platform
+import re
 from pathlib import Path
 import shutil
 import socket
@@ -17,6 +18,29 @@ def run(cmd, timeout=0.5):
         return {'returncode': proc.returncode, 'stdout': proc.stdout, 'stderr': proc.stderr}
     except (OSError, subprocess.TimeoutExpired) as exc:
         return {'returncode': 127, 'stdout': '', 'stderr': str(exc)}
+
+
+def detect_jetson(release_file='/etc/nv_tegra_release', model_file='/proc/device-tree/model'):
+    """NVIDIA Jetson facts ({'l4t': '36.4.0', 'model': ...}) or None on any other machine."""
+    l4t, model = None, None
+    try:
+        text = Path(release_file).read_text()
+        match = re.search(r'#\s*R(\d+)\s*\(release\),\s*REVISION:\s*(\d+(?:\.\d+)*)', text)
+        if match:
+            l4t = match.group(1) + '.' + match.group(2)
+    except OSError:
+        pass
+    try:
+        model = Path(model_file).read_bytes().split(b'\0')[0].decode('utf-8', 'replace').strip()
+    except OSError:
+        pass
+    if l4t is None and not (model and 'jetson' in model.lower()):
+        return None
+    return {'l4t': l4t, 'model': model or None}
+
+
+def normalized_arch(arch):
+    return {'amd64': 'x86_64', 'x86_64': 'x86_64', 'arm64': 'aarch64', 'aarch64': 'aarch64'}.get(str(arch).lower(), str(arch).lower())
 
 
 def facts(home, port=8091):
@@ -58,4 +82,4 @@ def facts(home, port=8091):
             'disk_free_gb': disk, 'python_version': platform.python_version(), 'python_venv': venv_ok,
             'python_tar_filter': hasattr(tarfile, 'data_filter'), 'groups': groups,
             'systemd_available': Path('/run/systemd/system').exists(), 'miner_port_free': free,
-            'wsl_gpu_path': Path('/usr/lib/wsl/lib').exists()}
+            'wsl_gpu_path': Path('/usr/lib/wsl/lib').exists(), 'jetson': detect_jetson()}

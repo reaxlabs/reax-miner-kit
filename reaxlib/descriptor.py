@@ -22,6 +22,38 @@ def url():
 
 # A fetched descriptor is unsigned data; it may only point at code and images owned by these GitHub owners (new owners need a new kit release).
 TRUSTED_OWNERS = ('reaxlabs',)
+CORE_IMAGES = ('miner', 's1_fast_runtime', 's1_pro_runtime')
+OPTIONAL_IMAGES = ('s1_lite_runtime', 's1_lite_runtime_jetson', 's1_cpu_runtime')
+POOL_IDS = ('s1-fast', 's1-pro', 's1-lite', 's1-cpu')
+
+
+FILE_NAME = re.compile(r'[A-Za-z0-9_][A-Za-z0-9_.-]*')
+
+
+def validate_pool_extras(pool):
+    """Strict checks for the optional tiered-pool fields; absent fields keep the s1-fast/s1-pro meaning."""
+    if 'tier' in pool and pool['tier'] not in ('gpu', 'small', 'cpu'):
+        raise ValueError('invalid pool tier')
+    if 'arch' in pool:
+        arch = pool['arch']
+        if not isinstance(arch, list) or not arch or len(set(map(str, arch))) != len(arch) or any(a not in ('x86_64', 'aarch64') for a in arch):
+            raise ValueError('invalid pool arch')
+    if 'accelerator' in pool and pool['accelerator'] not in ('nvidia', 'none'):
+        raise ValueError('invalid pool accelerator')
+    for key in ('jetson', 'dev_only'):
+        if key in pool and type(pool[key]) is not bool:
+            raise ValueError('invalid pool flag ' + key)
+    if pool.get('jetson'):
+        if pool.get('accelerator', 'nvidia') != 'nvidia' or 'aarch64' not in pool.get('arch', ['x86_64']):
+            raise ValueError('a jetson pool needs the nvidia accelerator and aarch64 arch')
+    for key in ('min_ram_gb', 'min_cpu_cores'):
+        if key in pool and (type(pool[key]) not in (int, float) or pool[key] <= 0):
+            raise ValueError('invalid pool ' + key)
+    if 'files' in pool['weights']:
+        files = pool['weights']['files']
+        if (not isinstance(files, list) or not files or len(set(map(str, files))) != len(files)
+                or any(not isinstance(f, str) or not FILE_NAME.fullmatch(f) or f.endswith('.') for f in files)):
+            raise ValueError('invalid weights file list')
 
 
 def validate(value):
@@ -80,10 +112,18 @@ def validate(value):
             raise ValueError('missing pool disk requirement')
         require(pool['weights'], ['repo', 'revision', 'gated', 'size_gb'])
         require(pool['gpu'], ['min_vram_gb', 'count', 'vendor'])
-        if type(pool['gpu']['count']) is not int or pool['gpu']['count'] < 1 or not isinstance(pool['gpu']['vendor'], str):
-            raise ValueError('invalid GPU count or vendor')
-        if type(pool['gpu']['min_vram_gb']) not in (int, float) or pool['gpu']['min_vram_gb'] <= 0:
-            raise ValueError('invalid GPU requirement')
+        validate_pool_extras(pool)
+        cpu_only = pool.get('accelerator', 'nvidia') == 'none'
+        if cpu_only:
+            if pool['gpu']['count'] != 0 or type(pool['gpu']['count']) is not int or pool['gpu']['vendor'] != 'none':
+                raise ValueError('invalid GPU count or vendor')
+            if type(pool['gpu']['min_vram_gb']) not in (int, float) or pool['gpu']['min_vram_gb'] != 0:
+                raise ValueError('invalid GPU requirement')
+        else:
+            if type(pool['gpu']['count']) is not int or pool['gpu']['count'] < 1 or not isinstance(pool['gpu']['vendor'], str):
+                raise ValueError('invalid GPU count or vendor')
+            if type(pool['gpu']['min_vram_gb']) not in (int, float) or pool['gpu']['min_vram_gb'] <= 0:
+                raise ValueError('invalid GPU requirement')
         maximum = pool['gpu'].get('max_vram_gb')
         if maximum is not None and (type(maximum) not in (int, float) or maximum < pool['gpu']['min_vram_gb']):
             raise ValueError('invalid maximum VRAM')
@@ -92,7 +132,7 @@ def validate(value):
             raise ValueError('invalid descriptor ' + label)
     matches(r'[A-Za-z0-9_][A-Za-z0-9_.-]*', value['release_id'], 'release id')
     matches(r'[A-Za-z0-9_][A-Za-z0-9_.-]*', value['minimum_release'], 'minimum release')
-    for key in ('miner', 's1_fast_runtime', 's1_pro_runtime'):
+    for key in CORE_IMAGES + tuple(k for k in OPTIONAL_IMAGES if k in value['images']):
         matches(r'[a-z0-9][a-z0-9./_-]*', value['images'][key], 'image')
         parts = value['images'][key].split('/')
         if len(parts) < 3 or any(part in ('', '.', '..') for part in parts) or parts[0] != 'ghcr.io':
@@ -101,7 +141,7 @@ def validate(value):
             raise ValueError('descriptor image owner is not trusted by this kit version')
     digests = value['images']['digests']
     if digests is not None:
-        if not isinstance(digests, dict) or set(digests) - {'miner', 's1_fast_runtime', 's1_pro_runtime'}:
+        if not isinstance(digests, dict) or set(digests) - set(CORE_IMAGES + OPTIONAL_IMAGES):
             raise ValueError('invalid descriptor digests')
         for digest in digests.values():
             matches(r'sha256:[0-9a-fA-F]{64}', digest, 'digest')
@@ -131,8 +171,11 @@ def validate(value):
     if registration.username or registration.password or registration.hostname not in ('reax.dev',):
         raise ValueError('invalid descriptor registration host')
     for pool in value['pools']:
-        if pool['id'] not in ('s1-fast', 's1-pro'):
+        if pool['id'] not in POOL_IDS:
             raise ValueError('unsupported descriptor pool id')
+        for image in ((pool['id'].replace('-', '_') + '_runtime',) + (('s1_lite_runtime_jetson',) if pool.get('jetson') else ())):
+            if image not in value['images']:
+                raise ValueError('release descriptor is missing required fields')
         if type(pool['sidecar_port']) is not int or pool['sidecar_port'] not in requirements['never_publish_ports']:
             raise ValueError('invalid descriptor sidecar port')
         if type(pool['enabled_at_launch']) is not bool or type(pool['weights']['gated']) is not bool:

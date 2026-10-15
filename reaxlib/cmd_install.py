@@ -175,12 +175,24 @@ def image_ref(d, key):
     return images[key] + ':' + (images.get('tag') or d['release_id'])
 
 
+SIDECAR_PORTS = (8101, 8102, 8103, 8104, 8000)
+GGUF_POOLS = ('s1-lite', 's1-cpu')
+
+
+def runtime_image_key(pool, jetson=False):
+    base = pool['id'].replace('-', '_') + '_runtime'
+    return base + '_jetson' if jetson and pool.get('jetson') else base
+
+
 def render(home, d, config, source=None):
     from .descriptor import validate
     validate(d)
     pool = pool_of(d, config['pool'])
     q = lambda value: json.dumps(str(value).replace("$", "$$"))  # JSON quoted scalars are valid YAML scalars.
-    key = pool['id'].replace('-', '_') + '_runtime'
+    on_jetson = bool(config.get('jetson')) and bool(pool.get('jetson'))
+    key = runtime_image_key(pool, on_jetson)
+    gguf = pool['id'] in GGUF_POOLS
+    nvidia = pool.get('accelerator', 'nvidia') == 'nvidia'
     private = not d['images'].get('public')
     uid = '{}:{}'.format(os.getuid(), os.getgid())
     token = str(home / 'secrets/runtime-token')
@@ -190,7 +202,7 @@ def render(home, d, config, source=None):
     if any(not re.fullmatch(r'[A-Za-z0-9_.-]+', str(x)) or x in ('.', '..') for x in (config.get('wallet_name', 'reax'), hotkey)):
         raise ValueError('Wallet and hotkey names must be single safe path components')
     port = config.get('miner_port', 8091)
-    if type(port) is not int or not 1024 <= port <= 65535 or port in (8101, 8102, 8000):
+    if type(port) is not int or not 1024 <= port <= 65535 or port in SIDECAR_PORTS:
         raise ValueError('miner_port must be an integer 1024–65535 excluding sidecar ports')
     if config.get('external_ip'):
         import ipaddress
@@ -206,15 +218,22 @@ def render(home, d, config, source=None):
         services += ['  ' + name + ':', '    image: ' + q(image_ref(d, imagekey)), '    user: ' + q(uid),
                      '    init: true', '    network_mode: host', '    restart: unless-stopped', '    cap_drop: [ALL]', '    security_opt: ["no-new-privileges:true"]', '    logging:', '      driver: json-file', '      options:', '        max-size: "10m"', '        max-file: "3"']
         if private and source:
-            services += ['    build:', '      context: ' + q(str(source)), '      dockerfile: ' + q('Dockerfile' if name == 'miner' else 'runtimes/' + pool['id'] + '/Dockerfile')]
+            runtime_dir = 'runtimes/s1-gguf' if gguf else 'runtimes/' + pool['id']
+            services += ['    build:', '      context: ' + q(str(source)), '      dockerfile: ' + q('Dockerfile' if name == 'miner' else runtime_dir + ('/Dockerfile.jetson' if on_jetson else '/Dockerfile'))]
         if name == 'runtime':
+            host_var, port_var = ('RUNTIME_HOST', 'RUNTIME_PORT') if pool['id'] == 's1-fast' or gguf else ('RUNE_HOST', 'RUNE_PORT')
+            if on_jetson:
+                services += ['    runtime: nvidia']  # Jetson exposes its integrated GPU through the nvidia runtime, not a device reservation
             services += ['    environment:', '      S1M_INTERNAL_TOKEN_FILE: /run/runtime-token',
-                         '      ' + ('RUNTIME_HOST' if pool['id'] == 's1-fast' else 'RUNE_HOST') + ': 127.0.0.1',
-                         '      ' + ('RUNTIME_PORT' if pool['id'] == 's1-fast' else 'RUNE_PORT') + ': ' + q(str(pool['sidecar_port'])),
-                         '    volumes:', '      - ' + q(token + ':/run/runtime-token:ro'),
-                         '      - ' + q(str(home / 'weights' / pool['id']) + ':/model:ro'),
-                         '    deploy:', '      resources:', '        reservations:',
-                         '          devices:', '            - driver: nvidia', '              count: 1', '              capabilities: [gpu]']
+                         '      ' + host_var + ': 127.0.0.1',
+                         '      ' + port_var + ': ' + q(str(pool['sidecar_port']))]
+            if gguf:
+                services += ['      GGUF_MODEL_DIR: /model', '      GGUF_N_GPU_LAYERS: ' + q('-1' if nvidia else '0')]
+            services += ['    volumes:', '      - ' + q(token + ':/run/runtime-token:ro'),
+                         '      - ' + q(str(home / 'weights' / pool['id']) + ':/model:ro')]
+            if nvidia and not on_jetson:
+                services += ['    deploy:', '      resources:', '        reservations:',
+                             '          devices:', '            - driver: nvidia', '              count: 1', '              capabilities: [gpu]']
         else:
             services += ['    env_file: ' + q(str(home / 'miner.env')),
                          '    depends_on:', '      runtime:', '        condition: service_healthy',
@@ -231,6 +250,8 @@ def render(home, d, config, source=None):
               'REAX_' + pool['id'].upper().replace('-', '_') + '_RUNTIME_URL': 'http://127.0.0.1:' + str(pool['sidecar_port']),
               'REAX_EXTERNAL_IP': config.get('external_ip', ''), 'REAX_MINER_PORT': config.get('miner_port', 8091),
               'REAX_EXTERNAL_PORT': config.get('miner_port', 8091)}
+    if pool.get('dev_only'):
+        values.update(REAX_FEATURE_TIERED_POOLS='1', REAX_ALLOW_DEV_MODELS='1')
     if any('\n' in str(v) or '\r' in str(v) for v in values.values()):
         raise ValueError('Environment values cannot contain newlines')
     envfile = home / 'miner.env'
@@ -256,9 +277,11 @@ def install(args):
     pool = pool_of(d, name)
     if not pool:
         return Result('install', 'error', 'Unknown pool.', exit_code=2)
+    if pool.get('dev_only') and mode == 'mainnet':
+        return Result('install', 'blocked', 'Pool {} is a development-network pool and cannot be installed on mainnet; use --mode localnet or testnet, or choose a launch pool.'.format(name), exit_code=12)
     if 'manifest_id' in config and config['manifest_id'] != pool['manifest_id'] and not getattr(args, 'accept_manifest_change', False):
         return human('install', 'Approve the manifest change.', 'A changed manifest resets the miner score.', ['Review and repeat with --accept-manifest-change.'])
-    if mode != 'localnet' and not pool.get('enabled_at_launch', False):
+    if mode != 'localnet' and not pool.get('enabled_at_launch', False) and not (pool.get('dev_only') and mode == 'testnet'):
         return Result('install', 'blocked', 'This pool is not enabled.', exit_code=12)
     ancestor = home
     while not ancestor.exists():
@@ -297,6 +320,11 @@ def install(args):
     config['netuid'] = None if mode == 'localnet' else d['status']['testnet_netuid' if mode == 'testnet' else 'netuid']
     if source:
         config['source_dir'] = str(source)
+    if pool.get('jetson'):
+        from .sysprobe import detect_jetson
+        config['jetson'] = bool(detect_jetson())
+    else:
+        config.pop('jetson', None)
     secret = home / 'secrets/runtime-token'
     private_dir(secret.parent)
     if secret.is_symlink():
@@ -320,10 +348,11 @@ def install(args):
         mark(home, 'images', {'images': d['images']})
         target = home / 'weights' / name
         target.mkdir(parents=True, exist_ok=True)
-        script = 'from huggingface_hub import snapshot_download; import sys; snapshot_download(repo_id=sys.argv[1],revision=sys.argv[2],local_dir=sys.argv[3])'
+        script = 'from huggingface_hub import snapshot_download; import sys; snapshot_download(repo_id=sys.argv[1],revision=sys.argv[2],local_dir=sys.argv[3],allow_patterns=sys.argv[4:] or None)'
+        # weights.files limits the download to those exact files (GGUF repos hold one file; never pull the rest)
         # own HF cache dir: an inherited HF_HOME can be unwritable for this user (found on a real GPU host: xet cache permission denied)
         hf_env = dict(os.environ, HF_HOME=str(home / 'hf-cache'))
-        rc, _, hf_err = runner([str(home / 'venv/bin/python'), '-I', '-c', script, pool['weights']['repo'], pool['weights']['revision'], str(target)], timeout=7200, env=hf_env)
+        rc, _, hf_err = runner([str(home / 'venv/bin/python'), '-I', '-c', script, pool['weights']['repo'], pool['weights']['revision'], str(target)] + list(pool['weights'].get('files') or []), timeout=7200, env=hf_env)
         if rc:
             if pool['weights'].get('gated'):
                 return human('install', 'Accept the weights gate with your own Hugging Face account.',

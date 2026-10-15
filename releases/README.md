@@ -42,3 +42,7 @@ commits, and optional source.commit is checked after public checkout. Refreshed 
 must not downgrade known release versions or regress a live launch. Set --offline or
 REAX_OFFLINE=1 to suppress refresh. The validated descriptor remains unsigned: HTTPS and
 schema checks are not a cryptographic publisher signature.
+
+### Tiered pools (optional pool fields)
+
+`s1-lite` and `s1-cpu` use these optional `pools[]` fields (absent means the `s1-fast`/`s1-pro` behaviour): `tier` (`gpu`, `small`, `cpu`), `arch` (list of `x86_64`/`aarch64`, default `["x86_64"]`), `accelerator` (`nvidia`, `none`; `none` allows `gpu.count: 0`, `gpu.vendor: "none"`, `gpu.min_vram_gb: 0`), `jetson` (bool; needs `nvidia` and `aarch64`), `weights.files` (exact file names; only these are downloaded), `min_ram_gb` / `min_cpu_cores` (per-pool override of `requirements`), and `dev_only` (localnet/testnet only; mainnet install is refused). Image keys `s1_lite_runtime`, `s1_lite_runtime_jetson` and `s1_cpu_runtime` are optional in `images`; they are tag-only until published. Sidecar ports 8103 and 8104 are listed in `never_publish_ports`.
