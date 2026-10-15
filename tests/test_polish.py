@@ -68,6 +68,8 @@ class PolishTests(unittest.TestCase):
     def test_plan_network_and_disabled_pool_blocks(self):
         release = copy.deepcopy(descriptor.load('/nonexistent'))
         release['status'].update(live=True, netuid=1, testnet_netuid=None)
+        release['images'].update(public=False)
+        next(p for p in release['pools'] if p['id'] == 's1-pro')['enabled_at_launch'] = False
         with patch('reaxlib.cmd_doctor.descriptor.load', return_value=release), patch('reaxlib.cmd_doctor.diagnose') as fake:
             fake.return_value.data = {}
             result = plan(argparse.Namespace(home='/nonexistent', mode='testnet', pool='s1-fast'))
@@ -77,14 +79,14 @@ class PolishTests(unittest.TestCase):
             result = plan(argparse.Namespace(home='/nonexistent', mode='localnet', pool='s1-pro'))
             self.assertFalse(any('blocked' in step for step in result.data['steps']))
 
-    def test_disabled_pool_quiet_until_requested(self):
+    def test_unselected_pool_quiet_until_requested(self):
         fixture = json.loads((ROOT / 'tests/fixtures/core_4090.json').read_text())
         fixture['host']['disk_free_gb'] = 30
         for selected in (None, 's1-pro'):
             result = diagnose(argparse.Namespace(home='/nonexistent', pool=selected, probe_ip=False),
                               host=fixture['host'], probe=lambda cmd, timeout: fixture['commands'].get(' '.join(cmd), {'returncode': 1, 'stdout': '', 'stderr': ''}))
             pro = next(p for p in result.data['eligible_pools'] if p['id'] == 's1-pro')
-            self.assertFalse(pro['enabled_at_launch'])
+            self.assertTrue(pro['enabled_at_launch'])
             self.assertEqual(any('s1-pro' in b['id'] for b in result.data['blockers']), selected == 's1-pro')
             if selected is None:
                 self.assertIn('listed for reference', pro['reasons'][0])

@@ -20,6 +20,15 @@ def url():
     return os.environ.get('REAX_RELEASES_URL', DEFAULT_URL)
 
 
+PLACEHOLDER_DIGEST = re.compile(r'sha256:TBD-[A-Za-z0-9_]+')
+
+
+def placeholder_digests(value):
+    """Image keys whose digest is still a sha256:TBD-* placeholder (release not final)."""
+    digests = (value.get('images') or {}).get('digests') or {}
+    return sorted(k for k, v in digests.items() if isinstance(v, str) and PLACEHOLDER_DIGEST.fullmatch(v))
+
+
 # A fetched descriptor is unsigned data; it may only point at code and images owned by these GitHub owners (new owners need a new kit release).
 TRUSTED_OWNERS = ('reaxlabs',)
 
@@ -103,7 +112,12 @@ def validate(value):
     if digests is not None:
         if not isinstance(digests, dict) or set(digests) - {'miner', 's1_fast_runtime', 's1_pro_runtime'}:
             raise ValueError('invalid descriptor digests')
+        final = value['images']['public'] or value['status']['live']
+        if final and placeholder_digests(value):
+            raise ValueError('placeholder image digests (sha256:TBD-*) in a public or live release: ' + ', '.join(placeholder_digests(value)))
         for digest in digests.values():
+            if not final and isinstance(digest, str) and PLACEHOLDER_DIGEST.fullmatch(digest):
+                continue  # release candidate in preparation; refused below once marked public or live
             matches(r'sha256:[0-9a-fA-F]{64}', digest, 'digest')
     if value['status']['live'] and value['images']['public'] and any(not (digests or {}).get(k) for k in ('miner', 's1_fast_runtime', 's1_pro_runtime')):
         raise ValueError('live public images require sha256 digests')

@@ -1,0 +1,64 @@
+# Manual s1-pro miner (release 1.2.0rc1) for operators who do not use `reaxctl install`/`reaxctl run`.
+# `reaxctl install --pool s1-pro --mode mainnet` renders an equivalent file for you.
+#
+# Prepare once (run as your own user, never as root):
+#   export REAX_UID=$(id -u) REAX_GID=$(id -g)
+#   mkdir -p secrets && openssl rand -hex 32 > secrets/runtime-token && chmod 0600 secrets/runtime-token
+#   cp miner.env.example miner.env                 # REAX_NETWORK/NETUID, wallet + hotkey names, REAX_EXTERNAL_IP/PORT
+#   hf auth login                                  # your OWN Hugging Face account, after accepting the gate for
+#                                                  # surogate/rune-26b-a4b-GGUF (the weights are never mirrored)
+#   hf download surogate/rune-26b-a4b-GGUF --revision c6b360d47895bb77bdf3805a13ee5a5557ab1921 --local-dir /srv/reax/rune-v3
+#   REAX_S1_PRO_WEIGHTS=/srv/reax/rune-v3 docker compose -f docker-compose.s1-pro.yml up -d
+#
+# The tag is mutable on GHCR: for a final release use the name@sha256:... digests from releases/current.json.
+# Confidential-compute GPUs (`nvidia-smi conf-compute -f` prints ON): also set REAX_CCFIX_DIR to the
+# runtimes/vllm-ccfix directory of a subnet checkout you have reviewed and add
+# `-f docker-compose.s1-pro-ccfix.yml` (service/docker-compose.s1-pro-ccfix.yml) to the command.
+#
+# Never publish the sidecar port 8102. The sidecar listens on loopback of the host network only; the miner binds 8091.
+services:
+  runtime:
+    image: ghcr.io/reaxlabs/reax-s1-pro-runtime:1.2.0-rc1   # pin by digest for a final release
+    user: "${REAX_UID:?set REAX_UID=$(id -u)}:${REAX_GID:?set REAX_GID=$(id -g)}"
+    init: true
+    network_mode: host
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      S1M_INTERNAL_TOKEN_FILE: /run/runtime-token
+      RUNE_HOST: 127.0.0.1          # loopback only
+      RUNE_PORT: "8102"
+      RUNE_DETERMINISTIC: "1"       # required: stock vLLM and FP8 builds fail the reference check
+    volumes:
+      - ./secrets/runtime-token:/run/runtime-token:ro
+      - ${REAX_S1_PRO_WEIGHTS:?set REAX_S1_PRO_WEIGHTS to the hf download --local-dir directory}:/model:ro
+    deploy:
+      resources:
+        reservations:
+          devices: [{driver: nvidia, count: 1, capabilities: [gpu]}]
+    logging: {driver: json-file, options: {max-size: "50m", max-file: "5"}}
+  miner:
+    image: ghcr.io/reaxlabs/reax-miner:1.2.0-rc1
+    user: "${REAX_UID:?set REAX_UID=$(id -u)}:${REAX_GID:?set REAX_GID=$(id -g)}"
+    init: true
+    network_mode: host
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    env_file: miner.env
+    depends_on:
+      runtime:
+        condition: service_healthy   # weights hash check + model load, a few minutes
+    environment:
+      REAX_MECHANISM: s1
+      REAX_MODEL: s1-pro
+      REAX_S1_PRO_RUNTIME_URL: http://127.0.0.1:8102
+      REAX_RUNTIME_TOKEN_FILE: /run/reax-runtime-token
+      REAX_PUBLISH_COMMITMENT: "1"   # reax-s1/1:s1-pro:5b11440bf57b5434
+    ulimits:
+      nofile: {soft: 65536, hard: 65536}
+    volumes:
+      - ${HOME}/.bittensor/wallets:/wallets:ro
+      - ./secrets/runtime-token:/run/reax-runtime-token:ro
+    logging: {driver: json-file, options: {max-size: "50m", max-file: "5"}}

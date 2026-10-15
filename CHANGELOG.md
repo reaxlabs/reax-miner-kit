@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release 1.2.0rc1 descriptor (`releases/current.json`): s1-pro pool enabled (Surogate Rune 26B-A4B v3, manifest `5b11440bf57b5434`, commitment `reax-s1/1:s1-pro:5b11440bf57b5434`, 80 GB+ GPU, deterministic runtime, gated HF weights from the miner's own account); s1-fast unchanged (`ff6e01b983d48024`). Image digests are `sha256:TBD-*` placeholders until the images are published; validation refuses placeholders once images are public or the release is live. The 1.1.0-rc2 descriptor is kept as `releases/1.1.0rc2.json`.
+- `doctor` for s1-pro: unmeasured-GPU warning (A100/H200/B200), confidential-compute detection with the UVA-fix hint, Hugging Face gate check (`--check-hf`; the token is never printed). Only the selected pool (default s1-fast) can raise capacity blockers, so an s1-fast host is not blocked by s1-pro.
+- `install --pool s1-pro` renders `RUNE_DETERMINISTIC=1`; `--cc-fix` adds `REAX_VLLM_DISABLE_UVA=1` and a read-only mount of `runtimes/vllm-ccfix` from a reviewed subnet checkout.
+- New `service/docker-compose.s1-pro.yml`, `docker-compose.s1-pro-ccfix.yml`, `miner.env.example` and `reax-s1-pro.service`; README s1-pro quickstart and competitions links; `docs/S1-PRO.md`. "Disabled at launch" wording removed.
 - Fresh-machine fixes: README apt line includes `python3-venv`; `doctor` reports missing venv support and Pythons without tarfile extraction filters (needed by the rehearsal) before anything is installed; a pip-less venv from an earlier failed attempt is recreated instead of failing every retry.
 - Failures of git, pip and the weights download show their reason (`detail`), with tokens and URL credentials masked.
 - Text output shows plan steps, failed `verify` checks and localnet processes; `localnet up` suggests the next commands; `net-policy` lists the ghcr.io and PyPI downloads of the first rehearsal.

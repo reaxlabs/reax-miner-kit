@@ -1,0 +1,123 @@
+{
+  "schema": "reax-release/1",
+  "release_id": "1.1.0rc2",
+  "updated": "2026-10-14",
+  "status": {
+    "launch_status": "registered_starting_soon",
+    "live": false,
+    "netuid": 92,
+    "network": "finney",
+    "testnet_netuid": null,
+    "notes": "Chain status and release availability are reported separately. Real-network actions require status.live=true; source and images are independently gated by their public availability fields. Localnet rehearsal needs a subnet source checkout when source.public=false. Testnet requires its own configured netuid."
+  },
+  "minimum_release": "1.1.0rc2",
+  "images": {
+    "miner": "ghcr.io/reaxlabs/reax-miner",
+    "s1_fast_runtime": "ghcr.io/reaxlabs/reax-s1-fast-runtime",
+    "s1_pro_runtime": "ghcr.io/reaxlabs/reax-s1-pro-runtime",
+    "tag": "1.1.0-rc2",
+    "digests": {
+      "miner": "sha256:8811d0a84e824e7fa352e11d986a8c721b6ac93c91b45264e64ebaafa0510a38",
+      "s1_fast_runtime": "sha256:a81d7d897a4d3c31be6edd45a82e988bce65834fd30d28eba5dca88eb8d7a8c8",
+      "s1_pro_runtime": "sha256:0875c4d98a82b7b3bb9e261f919bd632dfa291424ea239fb140261d8210f2841"
+    },
+    "public": true,
+    "note": "Pinned by digest; the 1.1.0-rc2 tag is mutable on GHCR."
+  },
+  "source": {
+    "git": "https://github.com/reaxlabs/reax-subnet",
+    "ref": "v1.1.0-rc2",
+    "public": true,
+    "commit": "e5fbb76ffee6b147cf931ca0be824e34e7c9b1a0"
+  },
+  "pools": [
+    {
+      "id": "s1-fast",
+      "model": "Plumb-4B (s1-fast)",
+      "weights": {
+        "repo": "crh225/plumb-4b",
+        "revision": "55de037801a8a9b9de3db5c0e16cef86210c2186",
+        "gated": false,
+        "size_gb": 9
+      },
+      "manifest_id": "ff6e01b983d48024",
+      "commitment": "reax-s1/1:s1-fast:ff6e01b983d48024",
+      "gpu": {
+        "min_vram_gb": 24,
+        "count": 1,
+        "vendor": "NVIDIA",
+        "measured": [
+          "RTX 4090",
+          "RTX PRO 6000 Blackwell",
+          "H100 80GB"
+        ],
+        "unmeasured_note": "Other cards: run scripts/calibration_s1 before serving."
+      },
+      "sidecar_port": 8101,
+      "enabled_at_launch": true
+    },
+    {
+      "id": "s1-pro",
+      "model": "Surogate Rune 26B-A4B v3 (s1-pro)",
+      "weights": {
+        "repo": "surogate/rune-26b-a4b-GGUF",
+        "revision": "c6b360d47895bb77bdf3805a13ee5a5557ab1921",
+        "gated": true,
+        "gate_note": "Accept the Hugging Face gate with your own account; never mirror the weights.",
+        "size_gb": 52
+      },
+      "manifest_id": "5b11440bf57b5434",
+      "commitment": "reax-s1/1:s1-pro:5b11440bf57b5434",
+      "gpu": {
+        "min_vram_gb": 80,
+        "max_vram_gb": 96,
+        "count": 1,
+        "vendor": "NVIDIA",
+        "measured": [
+          "RTX PRO 6000 (96 GB)",
+          "H100 80GB"
+        ]
+      },
+      "sidecar_port": 8102,
+      "enabled_at_launch": false
+    }
+  ],
+  "requirements": {
+    "cpu_cores": 4,
+    "ram_gb": 32,
+    "disk_gb": {
+      "s1-fast": 20,
+      "s1-pro": 80
+    },
+    "driver_min": "R580 (CUDA 13)",
+    "python_min": "3.10",
+    "open_ports": [
+      8091
+    ],
+    "never_publish_ports": [
+      8101,
+      8102,
+      8000
+    ],
+    "os": "Linux x86_64 (also WSL2 with NVIDIA GPU passthrough)",
+    "ntp_required": true
+  },
+  "tools": {
+    "bittensor": "11.1.0",
+    "typer": "<0.27.2",
+    "huggingface_hub": ">=0.25"
+  },
+  "links": {
+    "entry": "https://reax.dev/mine/",
+    "guide": "https://reax.dev/mine/",
+    "wallet": "https://reax.dev/wallet/",
+    "register": "https://reax.dev/register/",
+    "faq": "https://reax.dev/miner-faq/",
+    "project": "https://reax.co/"
+  },
+  "update": {
+    "channel": "stable",
+    "auto_safe": true,
+    "manifest_change_requires_confirm": true
+  }
+}

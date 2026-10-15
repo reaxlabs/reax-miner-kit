@@ -141,7 +141,7 @@ class HardeningTests(unittest.TestCase):
             kill.assert_not_called()
 
     def test_fetch_localhost_cache_offline_invalid_and_oversize(self):
-        value=live_private_release(); value['release_id']='1.1.0rc3'
+        value=live_private_release(); value['release_id']='1.2.0rc3'
         payload=[json.dumps(value).encode()]; requests=[]
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self):
@@ -152,13 +152,13 @@ class HardeningTests(unittest.TestCase):
         try:
             with patch.dict(os.environ,{'REAX_RELEASES_URL':'http://127.0.0.1:%s/current.json'%server.server_port,'REAX_OFFLINE':'0'}):
                 descriptor.begin(self.args)
-                self.assertEqual(descriptor.load(self.args,fetch=True)['release_id'],'1.1.0rc3')
+                self.assertEqual(descriptor.load(self.args,fetch=True)['release_id'],'1.2.0rc3')
                 self.assertEqual(descriptor.current_source(),'fetched')
                 descriptor.begin(self.args); descriptor.load(self.args,fetch=True)
                 self.assertEqual(descriptor.current_source(),'cache'); self.assertEqual(len(requests),1)
                 state.write_json(self.home/'releases/fetched_at',{'at':0}); payload[0]=b'x'*(256*1024+1)
                 descriptor.begin(self.args)
-                self.assertEqual(descriptor.load(self.args,fetch=True)['release_id'],'1.1.0rc3')
+                self.assertEqual(descriptor.load(self.args,fetch=True)['release_id'],'1.2.0rc3')
                 self.assertTrue(descriptor.warnings())
                 self.args.offline=True; descriptor.begin(self.args); descriptor.load(self.args,fetch=True)
                 self.assertEqual(len(requests),2)

@@ -11,6 +11,7 @@ import tarfile
 import time
 from .cli import add_common
 from .result import Result
+from .descriptor import PLACEHOLDER_DIGEST
 
 
 def runner(cmd, timeout=120, env=None, spawn=False, log=None, foreground=False):
@@ -167,10 +168,31 @@ def prepare_tools(home, d):
     mark(home, 'tools', {'requirements': specs})
 
 
+CCFIX_MOUNT = '/opt/reax-ccfix'
+
+
+def pool_ccfix(pool, config):
+    """True when the confidential-compute UVA fix is requested and this pool's descriptor defines it."""
+    return bool(config.get('cc_fix') and config.get('ccfix_dir') and (pool.get('runtime') or {}).get('cc_fix_env'))
+
+
+def pool_runtime_env(pool, config):
+    """Extra runtime sidecar environment from the descriptor (deterministic flags, optional CC fix)."""
+    runtime = pool.get('runtime') or {}
+    env = dict(runtime.get('env') or {})
+    if pool_ccfix(pool, config):
+        env.update(runtime['cc_fix_env'])
+        env['PYTHONPATH'] = CCFIX_MOUNT
+    for key, value in env.items():
+        if not re.fullmatch(r'[A-Z][A-Z0-9_]*', key) or not re.fullmatch(r'[A-Za-z0-9_./:-]*', str(value)):
+            raise ValueError('invalid runtime environment in descriptor')
+    return env
+
+
 def image_ref(d, key):
     images = d['images']
     digest = (images.get('digests') or {}).get(key)
-    if digest:
+    if digest and not PLACEHOLDER_DIGEST.fullmatch(digest):
         return images[key] + '@' + digest
     return images[key] + ':' + (images.get('tag') or d['release_id'])
 
@@ -208,11 +230,13 @@ def render(home, d, config, source=None):
         if private and source:
             services += ['    build:', '      context: ' + q(str(source)), '      dockerfile: ' + q('Dockerfile' if name == 'miner' else 'runtimes/' + pool['id'] + '/Dockerfile')]
         if name == 'runtime':
+            runtime_env = ['      ' + k + ': ' + q(v) for k, v in sorted(pool_runtime_env(pool, config).items())]
+            ccfix = ['      - ' + q(config['ccfix_dir'] + ':' + CCFIX_MOUNT + ':ro')] if pool_ccfix(pool, config) else []
             services += ['    environment:', '      S1M_INTERNAL_TOKEN_FILE: /run/runtime-token',
                          '      ' + ('RUNTIME_HOST' if pool['id'] == 's1-fast' else 'RUNE_HOST') + ': 127.0.0.1',
-                         '      ' + ('RUNTIME_PORT' if pool['id'] == 's1-fast' else 'RUNE_PORT') + ': ' + q(str(pool['sidecar_port'])),
+                         '      ' + ('RUNTIME_PORT' if pool['id'] == 's1-fast' else 'RUNE_PORT') + ': ' + q(str(pool['sidecar_port']))] + runtime_env + [
                          '    volumes:', '      - ' + q(token + ':/run/runtime-token:ro'),
-                         '      - ' + q(str(home / 'weights' / pool['id']) + ':/model:ro'),
+                         '      - ' + q(str(home / 'weights' / pool['id']) + ':/model:ro')] + ccfix + [
                          '    deploy:', '      resources:', '        reservations:',
                          '          devices:', '            - driver: nvidia', '              count: 1', '              capabilities: [gpu]']
         else:
@@ -288,6 +312,14 @@ def install(args):
             return failure
         mark(home, 'source', {'path': str(source), 'ref': d['source']['ref']})
     config.update(mode=mode, pool=name, release_id=d['release_id'], manifest_id=pool['manifest_id'])
+    if getattr(args, 'cc_fix', False):
+        if not (pool.get('runtime') or {}).get('cc_fix_env'):
+            return Result('install', 'blocked', '--cc-fix only applies to a pool whose descriptor defines it (s1-pro).', exit_code=12)
+        checkout = os.environ.get('REAX_SOURCE_DIR') or config.get('source_dir')
+        fixdir = pathlib.Path(checkout).expanduser().resolve() / 'runtimes' / 'vllm-ccfix' if checkout else None
+        if not fixdir or not (fixdir / 'sitecustomize.py').is_file() or fixdir.is_symlink():
+            return Result('install', 'blocked', 'The confidential-compute fix needs runtimes/vllm-ccfix/sitecustomize.py from a reviewed subnet checkout; set REAX_SOURCE_DIR to it and repeat with --cc-fix.', exit_code=12)
+        config.update(cc_fix=True, ccfix_dir=str(fixdir))
     if mode == 'mainnet':
         config['mainnet_confirmed'] = True
     config.setdefault('wallet_name', 'reax')
@@ -342,5 +374,6 @@ def register(sub):
     add_common(p)
     p.add_argument('--pool', default=None)
     p.add_argument('--accept-manifest-change', action='store_true')
+    p.add_argument('--cc-fix', action='store_true', help='s1-pro on confidential-compute GPUs: mount the UVA fix (needs a reviewed subnet checkout)')
     p.add_argument('--confirm-mainnet', action='store_true')
     p.set_defaults(func=install)

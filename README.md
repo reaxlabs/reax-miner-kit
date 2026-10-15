@@ -10,7 +10,7 @@ Read this before you spend anything.
 
 - Subnet emissions are variable and can be zero. Nothing here promises income, rewards or any value of TAO or subnet tokens; miners can lose money.
 - Registering a miner costs TAO, and the fee changes. You approve and pay it yourself in your own wallet; this kit never does.
-- Mining hardware (a 24 GB+ NVIDIA GPU for s1-fast) and electricity or rental cost money whether or not you earn anything.
+- Mining hardware (a 24 GB+ NVIDIA GPU for s1-fast, an 80–96 GB class GPU for s1-pro) and electricity or rental cost money whether or not you earn anything.
 - Keep your coldkey off the mining box. Only a hotkey belongs on that machine; never give a coldkey or recovery phrase to this kit, an agent or anyone else.
 - The kit is MIT licensed software provided as is, without warranty. Review what an agent runs on your behalf.
 
@@ -55,9 +55,9 @@ Read [AGENTS.md](AGENTS.md), then use `./reaxctl spec --json`, `./reaxctl agent-
 
 | Command | Purpose |
 | --- | --- |
-| `doctor [--pool P] [--probe-ip]` | Read-only host requirements; optional explicit network probes |
+| `doctor [--pool P] [--probe-ip] [--check-hf]` | Read-only host requirements (s1-pro: VRAM, unmeasured cards, confidential-compute mode, HF token); optional explicit network probes |
 | `plan --mode M --pool P` | Ordered setup steps, costs, owners and availability blocks |
-| `install --mode M --pool P` | Prepare pinned tools, source or images and weights |
+| `install --mode M --pool P [--cc-fix]` | Prepare pinned tools, source or images and weights (`--cc-fix`: s1-pro on confidential-compute GPUs) |
 | `selfcheck [--no-start]` | Testnet/mainnet: run the release's reference decisions through the runtime sidecar before registering (no wallet or chain needed) |
 | `wallet hotkey` | Create only a hotkey; never show its phrase |
 | `wallet coldkeypub --ss58 ADDRESS` | Import a public coldkey address |
@@ -80,7 +80,29 @@ Exit codes: 0 success, 2 usage, 10 unmet requirement, 11 human action, 12 not av
 - **testnet** requires a live descriptor and a testnet netuid. Registration remains a human action using test TAO.
 - **mainnet** requires a live descriptor and netuid, plus human-approved `--confirm-mainnet` during installation. Registration and any payment happen in the person's own wallet.
 
-Real mining requires Linux x86_64 with NVIDIA, driver R580+ and the NVIDIA Docker runtime. WSL2 support is conditional on NVIDIA GPU passthrough, compatible drivers and Docker access. macOS is supported as a controller only; its GPU cannot mine with this kit. AMD GPUs are unsupported. `doctor` checks the descriptor's pool requirements; the REAX reference models are s1-fast (Plumb-4B) and s1-pro (Rune); s1-pro is listed for reference and is disabled at launch.
+Real mining requires Linux x86_64 with NVIDIA, driver R580+ and the NVIDIA Docker runtime. WSL2 support is conditional on NVIDIA GPU passthrough, compatible drivers and Docker access. macOS is supported as a controller only; its GPU cannot mine with this kit. AMD GPUs are unsupported. `doctor` checks the descriptor's pool requirements; the REAX reference models are s1-fast (Plumb-4B, 24 GB+) and s1-pro (Surogate Rune 26B-A4B v3, 80–96 GB class). Both pools are enabled in release 1.2.0rc1; see the [s1-pro quickstart](#s1-pro-quickstart).
+
+## s1-pro quickstart
+
+Release 1.2.0rc1 turns the s1-pro pool on (inference split inside the GPU tier: s1-fast 0.35 / s1-pro 0.65; an empty pool's share goes to the other pool). s1-fast miners on 1.1.0-rc2 keep working: the miner protocol (`reax-s1/1`) and the s1-fast manifest `ff6e01b983d48024` are unchanged.
+
+- **Hardware:** one NVIDIA GPU with 80–96 GB, driver R580+, about 80 GB free disk (52 GB bf16 weights plus the runtime image). Measured bit-identical: RTX PRO 6000 96 GB and H100 80 GB. H200/B200 are expected to work but are not measured; A100 80 GB is not measured (at your own risk). `doctor --pool s1-pro` warns about unmeasured cards.
+- **Weights are gated on Hugging Face.** Accept the gate for `surogate/rune-26b-a4b-GGUF` with your own account and run `hf auth login`. REAX never mirrors the weights and `reaxctl` never reads or prints your token. `doctor --pool s1-pro --check-hf` asks huggingface.co whether your token can read the pinned revision (token presence is always checked locally).
+- **Deterministic runtime only:** the runtime image (`reax-s1-pro-runtime`, deterministic vLLM 0.30.0) runs with `RUNE_DETERMINISTIC=1`. Stock vLLM and FP8 builds fail the reference check.
+- **Confidential-compute GPUs:** if `nvidia-smi conf-compute -f` prints ON, `doctor` tells you to enable the UVA fix: `install --pool s1-pro --cc-fix` (needs `REAX_SOURCE_DIR` pointing to a reviewed subnet checkout; it mounts `runtimes/vllm-ccfix` read-only and sets `REAX_VLLM_DISABLE_UVA=1`).
+
+```sh
+./reaxctl doctor --pool s1-pro --check-hf
+./reaxctl plan --mode mainnet --pool s1-pro
+./reaxctl install --pool s1-pro --mode mainnet --confirm-mainnet   # after human approval; add --cc-fix on CC GPUs
+./reaxctl selfcheck          # must pass before you register
+```
+
+The runtime sidecar listens on loopback port 8102 only; never publish it. Service templates for running the s1-pro runtime and miner without `reaxctl run` are in [service/](service/); the full walk-through is [docs/S1-PRO.md](docs/S1-PRO.md). The commitment is `reax-s1/1:s1-pro:5b11440bf57b5434`.
+
+## Competitions
+
+From 16 October 2026 12:00 UTC the subnet runs the engine competition and the use-case tracks (50/50 split). They need no new mining mode in this kit: see https://reax.co/competitions and [COMPETITIONS.md](https://github.com/reaxlabs/reax-subnet/blob/release/1.2-rc/docs/COMPETITIONS.md) in the subnet repository.
 
 ## Safety and network access
 
@@ -94,7 +116,7 @@ Expose only the real miner port (default 8091). Keep runtime ports 8101, 8102 an
 | --- | --- |
 | `raw.githubusercontent.com/reaxlabs/reax-miner-kit/main/releases/current.json` | Doctor/plan/install/register/start/update refresh (one-hour TTL); --offline disables |
 | `ghcr.io` | Pinned miner/runtime images and native localnet chain image |
-| `huggingface.co`, `cdn-lfs.huggingface.co`, `cas-bridge.xethub.hf.co` | Pinned weights and optional reachability check |
+| `huggingface.co`, `cdn-lfs.huggingface.co`, `cas-bridge.xethub.hf.co` | Pinned weights, optional reachability check and the s1-pro gate check (`doctor --check-hf`, sends your token to huggingface.co only) |
 | `github.com/reaxlabs/reax-subnet` | Pinned source, when public |
 | `pypi.org`, `files.pythonhosted.org` | Isolated tool dependencies |
 | Loopback chain endpoint | Rehearsal chain (configured port; default localnet base 19951) |

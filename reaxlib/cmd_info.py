@@ -43,7 +43,7 @@ def net_policy(args):
     endpoints = [
         {'url': descriptor.url(), 'purpose': 'release descriptor', 'condition': 'doctor/plan/install/register/start/update unless --offline or REAX_OFFLINE=1; one-hour cache'},
         {'url': 'https://ghcr.io', 'purpose': 'pinned Docker images and native localnet chain image', 'condition': 'install or update; first localnet up'},
-        {'url': 'https://huggingface.co', 'purpose': 'pinned model weights and reachability', 'condition': 'install or doctor --probe-ip'},
+        {'url': 'https://huggingface.co', 'purpose': 'pinned model weights and reachability', 'condition': 'install or doctor --probe-ip; doctor --check-hf (s1-pro gate check)'},
         {'url': 'https://cdn-lfs.huggingface.co', 'purpose': 'weight downloads', 'condition': 'Hugging Face download redirect'},
         {'url': 'https://cas-bridge.xethub.hf.co', 'purpose': 'weight downloads', 'condition': 'Hugging Face download redirect'},
         {'url': release['source']['git'], 'purpose': 'pinned rehearsal source', 'condition': 'localnet install'},

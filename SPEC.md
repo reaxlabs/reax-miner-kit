@@ -51,10 +51,12 @@ gated,size_gb}, manifest_id, commitment, gpu{min_vram_gb,max_vram_gb,count,vendo
   and say unsupported), driver vs CUDA-13 floor (R580), Docker (client, daemon reachable, user in `docker` group,
   `docker info` runtimes incl. nvidia, compose plugin), NVIDIA container toolkit, python version, systemd available, NTP sync
   (`timedatectl show -p NTPSynchronized`, chronyc fallback), miner port free, public IP (only with `--probe-ip`), Hugging Face
-  reachability. `data.eligible_pools[]` with reasons (VRAM vs `min_vram_gb`/`max_vram_gb`), `data.rehearsal_possible`, `data.blockers[]`
+  reachability. s1-pro (selected pool): unmeasured-GPU warning (descriptor `gpu.unmeasured`), confidential-compute mode
+  (`nvidia-smi conf-compute -f`, `data.confidential_compute`), Hugging Face gate (`data.hf_gate`: token presence locally, access with
+  `--check-hf`; the token is never output). Placeholder image digests (`sha256:TBD-*`) are reported in `data.placeholder_digests`. `data.eligible_pools[]` with reasons (VRAM vs `min_vram_gb`/`max_vram_gb`), `data.rehearsal_possible`, `data.blockers[]`
   each with a concrete `fix`. Pure read-only.
 - `plan [--pool P] [--mode M]` — ordered steps with `who: agent|human`, `cost`, `reversible`, `command`. Dry run.
-- `install [--pool s1-fast] [--mode localnet|testnet|mainnet] [--yes]` — creates `$REAX_HOME`, tool venv, runtime token, renders
+- `install [--pool s1-fast] [--mode localnet|testnet|mainnet] [--cc-fix] [--yes]` — creates `$REAX_HOME`, tool venv, runtime token, renders
   `compose.yml`+`miner.env`, pulls images by digest (docker) or prepares the no-docker rehearsal from `source`, downloads the pinned
   weights (docker modes only) with a size/disk preflight. Resumable.
 - `selfcheck [--no-start]` — testnet/mainnet only: starts the runtime sidecar alone if it is stopped, then runs the release's
@@ -93,7 +95,7 @@ Mainnet steps are listed but blocked while `status.live=false`.
 
 All command parsers accept `--offline`; REAX_OFFLINE=1 has the same effect. Doctor/plan/install/register/start/update fetch the validated descriptor (one-hour cache, five-second timeout, 256 KB response cap, HTTPS; HTTP only on localhost/127.0.0.1; same-origin redirects). Failure uses a validated cache/bundle and adds warnings. Doctor/plan return data.releases_source = fetched|cache|bundled. An installed release below minimum_release generates a warning.
 
-Validation restricts images to ghcr.io and requires full SHA256 digests for live public images; tools to bittensor/typer/huggingface_hub with restricted version specs; GitHub HTTPS source URLs, version tags or 40-hex refs; optional source.commit and weights revisions to 40-hex; pool IDs to supported pools; sidecar/requirements ports to integers. Public checkout verifies origin, fetches tags and compares optional source.commit.
+Validation restricts images to ghcr.io and requires full SHA256 digests for live public images (`sha256:TBD-*` placeholders are accepted only while `images.public` and `status.live` are both false, and make validation fail once either is true); tools to bittensor/typer/huggingface_hub with restricted version specs; GitHub HTTPS source URLs, version tags or 40-hex refs; optional source.commit and weights revisions to 40-hex; pool IDs to supported pools; sidecar/requirements ports to integers. Public checkout verifies origin, fetches tags and compares optional source.commit.
 
 Install as well as update refuses a different stored manifest unless --accept-manifest-change. Flags --confirm-mainnet/--accept-manifest-change/--yes are agent-typable policy gates: the real money gate is human signing registration in their own wallet. Localnet register returns ok with guidance that localnet up registers its throw-away miner.
 

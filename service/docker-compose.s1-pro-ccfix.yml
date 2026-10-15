@@ -1,0 +1,10 @@
+# Override for confidential-compute GPUs only (`nvidia-smi conf-compute -f` prints ON).
+# Without it vLLM returns garbage there. Results are unchanged; it switches vLLM to explicit-copy buffers.
+# Use: REAX_CCFIX_DIR=/path/to/reviewed-subnet/runtimes/vllm-ccfix docker compose -f docker-compose.s1-pro.yml -f docker-compose.s1-pro-ccfix.yml up -d
+services:
+  runtime:
+    environment:
+      REAX_VLLM_DISABLE_UVA: "1"
+      PYTHONPATH: /opt/reax-ccfix
+    volumes:
+      - ${REAX_CCFIX_DIR:?set REAX_CCFIX_DIR to runtimes/vllm-ccfix of a reviewed subnet checkout}:/opt/reax-ccfix:ro

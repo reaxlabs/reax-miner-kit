@@ -17,6 +17,8 @@
 | `pools[].manifest_id`, `commitment` | Approved scoring manifest and chain commitment |
 | `pools[].gpu` | `min_vram_gb`, optional `max_vram_gb`, GPU `count`, `vendor`, measured hardware and optional notes |
 | `pools[].sidecar_port`, `enabled_at_launch` | Private runtime port and launch eligibility |
+| `pools[].runtime` | Optional: `deterministic`, `env` (sidecar environment), `cc_fix_env` (confidential-compute UVA fix) |
+| `pools[].gpu.unmeasured` | Optional GPU name fragments with no REAX measurement; `doctor` warns |
 | `requirements` | CPU cores, RAM GB, per-pool disk GB, driver/Python minimum, open ports and never-publish ports; OS/NTP notes |
 | `tools` | Tool package constraints installed in the venv |
 | `links` | Entry, guide, wallet, register, FAQ and project URLs |
@@ -29,11 +31,13 @@ Optional descriptive notes do not grant execution authority. No descriptor flag 
 1. Verify assigned subnet IDs and current chain status. Record an assigned mainnet netuid even while `status.live:false`; set `status.live:true` and `status.launch_status:"live"` only after the owner starts the subnet and the full release is ready. Set `testnet_netuid` only when a testnet subnet is assigned. Keep unavailable network IDs null.
 2. Build images from the reviewed subnet source commit. Record the immutable `images.tag` and every required `images.digests` entry. Set `images.public:true` only when the matching GHCR packages are public; verify an unauthenticated pull and loopback sidecar binding.
 3. Set `source.public:true` only when the exact reviewed source tag or commit is public. Confirm tool and model revisions, gates and access permissions.
-4. Verify launch-enabled pools, approved manifests/commitments, resource requirements, ports and links. Keep s1-pro disabled unless explicitly approved for launch.
+4. Verify launch-enabled pools, approved manifests/commitments, resource requirements, ports and links. s1-pro is enabled in 1.2.0rc1 (`enabled_at_launch:true`, `gpu.min_vram_gb` 80, no `max_vram_gb` so H200/B200 fit, `gpu.unmeasured` lists cards without a measurement); a pool is only enabled with explicit approval.
 5. Update `release_id`, declared `minimum_release` and release notes. Review manifest changes; they reset scores and require human confirmation.
 6. Update the bundled descriptor, the public kit copy at https://raw.githubusercontent.com/reaxlabs/reax-miner-kit/main/releases/current.json and https://reax.dev/miner.json together. Check that source ref/commit, image tag/digests and public flags agree. Keep `status.live:false` until the owner-start watcher confirms chain start; the watcher updates only the status fields.
 7. Run the unit suite, compatibility CI, public download checks and a controlled real miner rehearsal through human registration. Never perform payments from the kit.
 8. Publish the reviewed kit git tag and announce its commit at https://reax.dev/mine/. Verify a fresh clone of the tag against it; retain release evidence.
+
+Release candidates in preparation may carry `images.digests` values of the form `sha256:TBD-<image>` (one place, the `digests` object). They are accepted only while `images.public` and `status.live` are false; with either set to true validation fails with "placeholder image digests", so a final descriptor cannot ship them. `doctor` warns while placeholders remain, and install never pins a placeholder (it uses the tag). Fill all three digests and set `images.public:true` in one edit. `pools[].runtime.env` holds extra runtime sidecar environment (s1-pro: `RUNE_DETERMINISTIC=1`) and `runtime.cc_fix_env` the confidential-compute fix. Previous descriptors are kept as `releases/<release>.json` (1.1.0rc2).
 
 Kit 0.1.5 validates descriptors before caching or consumption. Images must use ghcr.io;
 live public images need sha256 digests. Tool keys are bittensor/typer/huggingface_hub, with

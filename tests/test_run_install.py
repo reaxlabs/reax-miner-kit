@@ -129,7 +129,7 @@ class InstallTest(unittest.TestCase):
         self.assertIn('detail: ERROR: No matching', result.render_text())
     def test_failed_source_clone_reports_git_reason(self):
         d = copy.deepcopy(D)
-        d['source']['public'] = True
+        d['source'].update(public=True, commit='0'*40)
         err = "Cloning into 'source'...\nfatal: unable to access 'https://github.com/reaxlabs/reax-subnet/': Could not resolve host: github.com\n"
         with patch.dict(install.os.environ, {'REAX_SOURCE_DIR': ''}), patch.object(install, 'runner', return_value=(128,'',err)):
             source, result = install.prepare_source(self.home, d)

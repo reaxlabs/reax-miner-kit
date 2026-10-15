@@ -1,0 +1,21 @@
+[Unit]
+Description=REAX s1-pro runtime and miner (docker compose)
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+# Run as your own non-root user in the docker group; secrets/ and miner.env live in @WORKDIR@ (mode 0600).
+User=@USER@
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=@WORKDIR@
+Environment=REAX_S1_PRO_WEIGHTS=@WEIGHTS@ REAX_UID=@UID@ REAX_GID=@GID@
+# Confidential-compute GPUs: append "-f docker-compose.s1-pro-ccfix.yml" to both compose lines and add
+# Environment=REAX_CCFIX_DIR=<runtimes/vllm-ccfix of a reviewed subnet checkout>
+ExecStart=/usr/bin/docker compose -f docker-compose.s1-pro.yml up -d
+ExecStop=/usr/bin/docker compose -f docker-compose.s1-pro.yml down
+TimeoutStartSec=1800
+
+[Install]
+WantedBy=multi-user.target

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import re
+import urllib.error
 import ipaddress
 import os
 import urllib.request
@@ -15,6 +16,57 @@ DOCKER_DOC = 'https://docs.docker.com/engine/install/'
 TARFILE_MESSAGE = 'This Python lacks tarfile extraction filters, which the rehearsal needs to unpack the chain image safely.'
 TARFILE_FIX = 'Use Python 3.10.12+, 3.11.4+ or 3.12+ (Ubuntu 22.04+ or Debian 13 ship one) and run reaxctl with it, for example python3.12 ./reaxctl install.'
 NVIDIA_DOC = 'https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html'
+
+
+HF_API = 'https://huggingface.co/api/models/'
+
+
+def hf_token_present(environ=None, home=None):
+    """Whether a Hugging Face token is configured; the value is never read into any output."""
+    environ = os.environ if environ is None else environ
+    if environ.get('HF_TOKEN') or environ.get('HUGGING_FACE_HUB_TOKEN'):
+        return True
+    root = environ.get('HF_HOME') or os.path.join(str(home or os.path.expanduser('~')), '.cache', 'huggingface')
+    return os.path.isfile(os.path.join(root, 'token'))
+
+
+def hf_gate_status(weights, check_network, opener=None):
+    """Token presence and, when asked, whether the pinned gated revision is accessible with it."""
+    info = {'gated': bool(weights.get('gated')), 'token_present': hf_token_present(), 'checked': False, 'accessible': None}
+    if not (check_network and info['gated']):
+        return info
+    token = os.environ.get('HF_TOKEN') or os.environ.get('HUGGING_FACE_HUB_TOKEN')
+    if not token:
+        try:
+            with open(os.path.join(os.environ.get('HF_HOME') or os.path.join(os.path.expanduser('~'), '.cache', 'huggingface'), 'token')) as handle:
+                token = handle.read(512).strip()
+        except OSError:
+            pass
+    request = urllib.request.Request(HF_API + weights['repo'] + '/revision/' + weights['revision'], method='GET')
+    if token:
+        request.add_header('Authorization', 'Bearer ' + token)
+    info['checked'] = True
+    try:
+        with (opener or urllib.request.urlopen)(request, timeout=5) as response:
+            info['accessible'] = 200 <= response.status < 300
+    except urllib.error.HTTPError as exc:
+        info['accessible'] = False if exc.code in (401, 403, 404) else None
+    except (OSError, ValueError):
+        info['accessible'] = None
+    return info
+
+
+def confidential_compute(call):
+    """nvidia-smi conf-compute -f prints 'CC status: ON' on confidential-compute GPUs."""
+    result = call(['nvidia-smi', 'conf-compute', '-f'])
+    if result['returncode'] != 0:
+        return {'checked': False, 'on': None}
+    return {'checked': True, 'on': bool(re.search(r'\bON\b', result['stdout']))}
+
+
+def unmeasured_gpus(pool, gpus):
+    tokens = pool['gpu'].get('unmeasured') or []
+    return sorted({gpu['name'] for gpu in gpus if any(t.lower() in gpu['name'].lower() for t in tokens)})
 
 
 def diagnose(args, probe=None, host=None, release=None):
@@ -110,8 +162,14 @@ def diagnose(args, probe=None, host=None, release=None):
         rehearsal = False
         block('python_tarfile', TARFILE_MESSAGE, TARFILE_FIX)
     eligible = []
+    selected_id = getattr(args, 'pool', None) or config.get('pool') or 's1-fast'
+    placeholders = descriptor.placeholder_digests(release)
+    if placeholders:
+        warnings.append('This release descriptor still has placeholder image digests (' + ', '.join(placeholders) + '); it is a release candidate in preparation. Do not use it for real mining.')
+    cc = {'checked': False, 'on': None}
+    hf_gate = None
     for pool in release['pools']:
-        active = pool['enabled_at_launch'] or getattr(args, 'pool', None) == pool['id']
+        active = pool['id'] == selected_id
         gpu_req = pool['gpu']
         reasons = []
         fitting = [gpu for gpu in gpus if gpu['vendor'].lower() == gpu_req['vendor'].lower() and gpu['driver_ok'] and gpu['vram_gb'] is not None and gpu['vram_gb'] >= gpu_req['min_vram_gb'] - 1 and (gpu_req.get('max_vram_gb') is None or gpu['vram_gb'] <= gpu_req['max_vram_gb'])]
@@ -122,6 +180,19 @@ def diagnose(args, probe=None, host=None, release=None):
         # a '24 GB' card reports ~23.99 GiB, so only warn well below the nominal size
         elif active and any(gpu['vram_gb'] < gpu_req['min_vram_gb'] * 0.97 for gpu in fitting):
             warnings.append(pool['id'] + ': usable VRAM is slightly below the nominal minimum; accepted within 1 GB tolerance.')
+        if active and pool['id'] == 's1-pro':
+            unmeasured = unmeasured_gpus(pool, fitting)
+            if unmeasured:
+                warnings.append('s1-pro: ' + ', '.join(unmeasured) + ' has not been measured bit-identical to the reference ('
+                                + (gpu_req.get('unmeasured_note') or 'run reaxctl selfcheck before committing') + ' Run reaxctl selfcheck before committing on chain.')
+            cc = confidential_compute(call)
+            if cc['on']:
+                warnings.append('s1-pro: confidential-compute mode is ON on this GPU. Without the UVA fix vLLM returns garbage; install with reaxctl install --pool s1-pro --cc-fix (sets REAX_VLLM_DISABLE_UVA=1 and mounts runtimes/vllm-ccfix from a reviewed subnet checkout).')
+            hf_gate = hf_gate_status(pool['weights'], getattr(args, 'check_hf', False))
+            if hf_gate['gated'] and not hf_gate['token_present']:
+                warnings.append('s1-pro: no Hugging Face token found. The weights are gated: accept the gate for ' + pool['weights']['repo'] + ' with your own account at https://huggingface.co/' + pool['weights']['repo'] + ' and run hf auth login (reaxctl never reads or prints the token).')
+            elif hf_gate['checked'] and hf_gate['accessible'] is False:
+                warnings.append('s1-pro: the pinned weights revision is not accessible with your Hugging Face token; accept the gate at https://huggingface.co/' + pool['weights']['repo'] + ' with the same account.')
         if not supported:
             reasons.append('Linux x86_64 or WSL2 is required.')
         if host['disk_free_gb'] < req['disk_gb'][pool['id']]:
@@ -129,7 +200,7 @@ def diagnose(args, probe=None, host=None, release=None):
             if active:
                 block('disk_' + pool['id'], reasons[-1], 'Free space in REAX_HOME or select a larger disk; {} GB required.'.format(req['disk_gb'][pool['id']]))
         eligible.append({'id': pool['id'], 'ok': not reasons, 'enabled_at_launch': pool['enabled_at_launch'],
-                         'reasons': reasons if active else ['Not enabled at launch; listed for reference.']})
+                         'reasons': reasons if active else ['Not the selected pool; listed for reference.']})
     available = any(pool['ok'] for pool in eligible)
     common_blockers = [item for item in blockers if not item['id'].startswith(('disk_', 'gpu_capacity_'))]
     launch_pools = {pool['id'] for pool in release['pools'] if pool['enabled_at_launch']}
@@ -137,7 +208,8 @@ def diagnose(args, probe=None, host=None, release=None):
     source_ok = bool(os.environ.get('REAX_SOURCE_DIR')) or bool(release['source'].get('public'))
     data = dict(host, gpus=gpus, docker=docker, nvidia_container_toolkit=toolkit_ok, ntp_synchronized=ntp_ok,
                 eligible_pools=eligible, rehearsal_capable=rehearsal, rehearsal_possible=bool(rehearsal and source_ok), rehearsal_source_available=source_ok, real_mining_possible=bool(ready), blockers=blockers,
-                mode_default='localnet', huggingface={'checked': False, 'reachable': None}, public_ip=None)
+                mode_default='localnet', huggingface={'checked': False, 'reachable': None}, public_ip=None,
+                confidential_compute=cc, hf_gate=hf_gate, placeholder_digests=placeholders)
     if getattr(args, 'probe_ip', False):
         for endpoint, key in [('https://api.ipify.org', 'public_ip'), ('https://huggingface.co', 'huggingface')]:
             try:
@@ -211,6 +283,7 @@ def plan(args):
 def register(sub):
     parser = sub.add_parser('doctor'); add_common(parser)
     parser.add_argument('--probe-ip', action='store_true')
+    parser.add_argument('--check-hf', action='store_true', help='s1-pro: ask huggingface.co whether your token can read the pinned gated revision')
     parser.add_argument('--pool', default=None)
     parser.set_defaults(func=diagnose)
     parser = sub.add_parser('plan'); add_common(parser)
