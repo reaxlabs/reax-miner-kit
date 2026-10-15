@@ -20,20 +20,21 @@
     "s1_cpu_runtime": "ghcr.io/reaxlabs/reax-s1-cpu-runtime",
     "tag": "1.2.0-rc1",
     "digests": {
-      "miner": "sha256:TBD-miner",
-      "s1_fast_runtime": "sha256:TBD-s1_fast_runtime",
-      "s1_pro_runtime": "sha256:TBD-s1_pro_runtime",
-      "s1_lite_runtime": "sha256:TBD-s1_lite_runtime",
-      "s1_lite_runtime_jetson": "sha256:TBD-s1_lite_runtime_jetson",
-      "s1_cpu_runtime": "sha256:TBD-s1_cpu_runtime"
+      "miner": "sha256:1a4754e6f568e113216133040f471c2092ea8f1538b181b786c399366a4c0a35",
+      "s1_fast_runtime": "sha256:d857a90eaf168d1db3ca982c5111b10fb61a65cc5f7113ea9e391fe6fca17b71",
+      "s1_pro_runtime": "sha256:f26cd3b765b556962f1c0680b407c9d2feb4022c7f16063b75f9ce6f7d8cea93",
+      "s1_lite_runtime": "sha256:d96e77732d6fcaa36f0ae86917fbf36b00b0e3636baa560e6a799d2b95af3ad2",
+      "s1_lite_runtime_jetson": "sha256:e04f4ea5bc5a6b6eb6321784a394eff34b047ea86ee275bfdda3148ff1f2e0ce",
+      "s1_cpu_runtime": "sha256:67c2e1c24d39040943b3a924656adfe58cd16cf624bf47da29f4661c3085696e"
     },
-    "public": false,
-    "note": "PLACEHOLDER digests (sha256:TBD-*) until docker.yml publishes 1.2.0-rc1; replace all six and set public:true in one edit. s1_lite_runtime_jetson is the linux/arm64 (Jetson, JetPack 6) build of the s1-lite runtime; s1_lite_runtime and s1_cpu_runtime also need a linux/arm64 variant for aarch64 CPU hosts (multi-arch index or separate digests; to be decided when the subnet publishes them). Validation refuses placeholders once images are public or the release is live."
+    "public": true,
+    "note": "Published by reaxlabs/reax-subnet docker.yml from commit 020429e (tag v1.2.0-rc1). s1_cpu_runtime is a multi-arch index (linux/amd64 + linux/arm64); s1_lite_runtime is linux/amd64 CUDA; s1_lite_runtime_jetson is the linux/arm64 JetPack build (not yet tested on Jetson hardware)."
   },
   "source": {
     "git": "https://github.com/reaxlabs/reax-subnet",
     "ref": "v1.2.0-rc1",
-    "public": false
+    "public": true,
+    "commit": "020429eabd8d7f3f0dfa37cead84171b22c7ff74"
   },
   "pools": [
     {
