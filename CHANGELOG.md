@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release descriptor 1.2.0rc3 (reax-subnet commit 6f12faa): capacity scoring v2. Pay inside a pool follows verified throughput (linear, up to a cap far above one machine); the miner image raises the per-caller limits to 16 concurrent / 240 per minute so a probe can measure full speed. `reaxctl update check` / `update apply` moves an installed miner to the new images.
+
 - Merged the tiered-pools kit branch into the 1.2.0rc1 descriptor: `releases/current.json` now enables four pools (s1-fast, s1-pro, s1-lite, s1-cpu). s1-lite (Plumb-4B GGUF, 8 GB NVIDIA GPU or Jetson Orin, manifest `8c7297e14e5e89bf`) and s1-cpu (Gutsy 0.8B GGUF, no GPU, manifest `f2c9981f0766f2a6`) are `enabled_at_launch` and no longer `dev_only`; the `dev_only` mechanism stays for future pools. Images `reax-s1-lite-runtime`, `reax-s1-lite-runtime-jetson`, `reax-s1-cpu-runtime` carry `sha256:TBD-*` placeholders (now six in total).
 - `doctor` checks the selected pool (default s1-fast) for host-wide blockers; per-pool hardware eligibility (`hardware_ok`, `tier`, `dev_only`) and `recommended_pool` (s1-fast, else s1-lite, else s1-cpu) are reported for all pools. A host that only fits s1-cpu is not reported ready while s1-fast is selected. Jetson detection (`/etc/nv_tegra_release`) and aarch64 CPU hosts are supported.
 - `install --pool s1-lite|s1-cpu` renders the llama.cpp sidecar (ports 8103/8104, `runtime: nvidia` on Jetson, no GPU reservation for s1-cpu), downloads only the listed GGUF file, and sets `REAX_FEATURE_TIERED_POOLS=1`. Sidecar ports 8101-8104 and 8000 are never miner ports.
