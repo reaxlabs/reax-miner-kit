@@ -22,14 +22,22 @@ def bundled():
     return json.loads(descriptor.BUNDLED.read_text())
 
 
-def run_doctor(smi_row, cc=None, pool='s1-pro', check_hf=False):
+def with_placeholders():
+    # in-test copy of the bundled descriptor with the pre-publication sha256:TBD-* digests injected
+    value = bundled()
+    value['images']['public'] = False
+    value['images']['digests'] = {k: 'sha256:TBD-' + k for k in value['images']['digests']}
+    return value
+
+
+def run_doctor(smi_row, cc=None, pool='s1-pro', check_hf=False, release=None):
     commands = dict(FIXTURE['commands'])
     commands[SMI] = {'returncode': 0, 'stdout': smi_row + '\n', 'stderr': ''}
     if cc is not None:
         commands['nvidia-smi conf-compute -f'] = {'returncode': 0, 'stdout': 'CC status: ' + cc + '\n', 'stderr': ''}
     probe = lambda cmd, timeout: commands.get(' '.join(cmd), {'returncode': 1, 'stdout': '', 'stderr': ''})
     args = argparse.Namespace(home='/nonexistent', pool=pool, probe_ip=False, check_hf=check_hf)
-    return diagnose(args, host=dict(FIXTURE['host']), probe=probe, release=bundled())
+    return diagnose(args, host=dict(FIXTURE['host']), probe=probe, release=release or bundled())
 
 
 class DescriptorTest(unittest.TestCase):
@@ -51,16 +59,29 @@ class DescriptorTest(unittest.TestCase):
         self.assertEqual(old['release_id'], '1.1.0rc2')
         self.assertFalse(next(p for p in old['pools'] if p['id'] == 's1-pro')['enabled_at_launch'])
 
-    def test_placeholders_all_in_digests_only(self):
+    def test_bundled_has_published_digests_and_public_source(self):
         value = bundled()
+        self.assertEqual(descriptor.placeholder_digests(value), [])
+        self.assertEqual(len(descriptor.PLACEHOLDER_DIGEST.findall(descriptor.BUNDLED.read_text())), 0)
+        self.assertTrue(value['images']['public'])
+        digests = value['images']['digests']
+        self.assertEqual(sorted(digests), ['miner', 's1_cpu_runtime', 's1_fast_runtime', 's1_lite_runtime', 's1_lite_runtime_jetson', 's1_pro_runtime'])
+        for key, digest in digests.items():
+            self.assertRegex(digest, r'^sha256:[0-9a-f]{64}$', key)
+        self.assertTrue(value['source']['public'])
+        self.assertEqual(value['source']['commit'], '020429eabd8d7f3f0dfa37cead84171b22c7ff74')
+        descriptor.validate(value)
+
+    def test_placeholders_all_in_digests_only(self):
+        value = with_placeholders()
         self.assertEqual(descriptor.placeholder_digests(value), ['miner', 's1_cpu_runtime', 's1_fast_runtime', 's1_lite_runtime', 's1_lite_runtime_jetson', 's1_pro_runtime'])
-        text = descriptor.BUNDLED.read_text()
-        self.assertEqual(len(descriptor.PLACEHOLDER_DIGEST.findall(text)), 6)
+        self.assertEqual(len(descriptor.PLACEHOLDER_DIGEST.findall(json.dumps(value))), 6)
         self.assertFalse(value['images']['public'])
+        descriptor.validate(value)
 
     def test_placeholders_refused_in_final_release(self):
         for change in ({'images': {'public': True}}, {'status': {'live': True, 'launch_status': 'live'}}):
-            value = bundled()
+            value = with_placeholders()
             for section, fields in change.items():
                 value[section].update(fields)
             with self.assertRaisesRegex(ValueError, 'placeholder'):
@@ -74,12 +95,21 @@ class DescriptorTest(unittest.TestCase):
         descriptor.validate(value)
         self.assertEqual(descriptor.placeholder_digests(value), [])
 
-    def test_image_ref_never_pins_a_placeholder(self):
+    def test_image_ref_pins_the_published_digest(self):
         value = bundled()
+        self.assertEqual(install.image_ref(value, 's1_pro_runtime'), 'ghcr.io/reaxlabs/reax-s1-pro-runtime@' + value['images']['digests']['s1_pro_runtime'])
+
+    def test_image_ref_never_pins_a_placeholder(self):
+        value = with_placeholders()
         self.assertEqual(install.image_ref(value, 's1_pro_runtime'), 'ghcr.io/reaxlabs/reax-s1-pro-runtime:1.2.0-rc1')
 
-    def test_doctor_warns_about_placeholders(self):
+    def test_doctor_is_quiet_about_placeholders_for_the_bundled_release(self):
         result = run_doctor('NVIDIA H100 80GB HBM3, 81559, 580.65')
+        self.assertEqual(result.data['placeholder_digests'], [])
+        self.assertFalse(any('placeholder image digests' in w for w in result.warnings))
+
+    def test_doctor_warns_about_placeholders(self):
+        result = run_doctor('NVIDIA H100 80GB HBM3, 81559, 580.65', release=with_placeholders())
         self.assertEqual(result.data['placeholder_digests'], ['miner', 's1_cpu_runtime', 's1_fast_runtime', 's1_lite_runtime', 's1_lite_runtime_jetson', 's1_pro_runtime'])
         self.assertTrue(any('placeholder image digests' in w for w in result.warnings))
         self.assertFalse(result.data['real_mining_possible'])

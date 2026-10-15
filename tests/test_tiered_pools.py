@@ -69,7 +69,13 @@ class DescriptorFieldTests(unittest.TestCase):
         self.assertEqual(by_id['s1-lite']['commitment'], 'reax-s1/1:s1-lite:8c7297e14e5e89bf')
         self.assertEqual(by_id['s1-cpu']['commitment'], 'reax-s1/1:s1-cpu:f2c9981f0766f2a6')
         self.assertEqual(LAUNCH['images']['tag'], '1.2.0-rc1')
-        self.assertEqual(descriptor.placeholder_digests(LAUNCH), ['miner', 's1_cpu_runtime', 's1_fast_runtime', 's1_lite_runtime', 's1_lite_runtime_jetson', 's1_pro_runtime'])
+        self.assertEqual(descriptor.placeholder_digests(LAUNCH), [])
+        self.assertTrue(LAUNCH['images']['public'])
+        self.assertEqual(sorted(LAUNCH['images']['digests']), ['miner', 's1_cpu_runtime', 's1_fast_runtime', 's1_lite_runtime', 's1_lite_runtime_jetson', 's1_pro_runtime'])
+        for key, digest in LAUNCH['images']['digests'].items():
+            self.assertRegex(digest, r'^sha256:[0-9a-f]{64}$', key)
+        self.assertTrue(LAUNCH['source']['public'])
+        self.assertEqual(LAUNCH['source']['commit'], '020429eabd8d7f3f0dfa37cead84171b22c7ff74')
 
     def test_bundled_has_both_new_pools_disabled_and_dev_only(self):
         descriptor.validate(copy.deepcopy(BUNDLED))
@@ -266,7 +272,7 @@ class RenderTests(unittest.TestCase):
         self.assertNotIn('nvidia', compose)
         self.assertNotIn('devices:', compose)
         self.assertNotIn('deploy:', compose)
-        self.assertIn('ghcr.io/reaxlabs/reax-s1-cpu-runtime:1.2.0-rc1', compose)
+        self.assertIn('ghcr.io/reaxlabs/reax-s1-cpu-runtime@' + BUNDLED['images']['digests']['s1_cpu_runtime'], compose)
         for line in ('RUNTIME_HOST: 127.0.0.1', 'RUNTIME_PORT: "8104"', 'GGUF_MODEL_DIR: /model', 'GGUF_N_GPU_LAYERS: "0"', 'S1M_INTERNAL_TOKEN_FILE: /run/runtime-token'):
             self.assertIn(line, compose)
         self.assertIn('/weights/s1-cpu:/model:ro', compose)
@@ -280,7 +286,7 @@ class RenderTests(unittest.TestCase):
         self.assertIn('driver: nvidia', compose)
         self.assertIn('capabilities: [gpu]', compose)
         self.assertNotIn('runtime: nvidia', compose)
-        self.assertIn('ghcr.io/reaxlabs/reax-s1-lite-runtime:1.2.0-rc1', compose)
+        self.assertIn('ghcr.io/reaxlabs/reax-s1-lite-runtime@' + BUNDLED['images']['digests']['s1_lite_runtime'], compose)
         self.assertNotIn('jetson', compose)
         self.assertIn('RUNTIME_PORT: "8103"', compose)
         self.assertIn('GGUF_N_GPU_LAYERS: "-1"', compose)
@@ -290,7 +296,7 @@ class RenderTests(unittest.TestCase):
     def test_lite_on_jetson_uses_nvidia_runtime_and_jetson_image(self):
         compose, _ = self.render('s1-lite', jetson=True)
         self.assertIn('    runtime: nvidia', compose)
-        self.assertIn('reax-s1-lite-runtime-jetson:1.2.0-rc1', compose)
+        self.assertIn('reax-s1-lite-runtime-jetson@' + BUNDLED['images']['digests']['s1_lite_runtime_jetson'], compose)
         self.assertNotIn('devices:', compose)
         self.assertIn('GGUF_N_GPU_LAYERS: "-1"', compose)
 
