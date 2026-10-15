@@ -94,7 +94,7 @@ class DoctorTests(unittest.TestCase):
         fixture = json.loads((FIXTURES / 'core_4090.json').read_text())
         fixture['commands']['nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader,nounits']['stdout'] = 'RTX 4090, 24564, 579.99'
         result = diagnose(argparse.Namespace(home='/nonexistent', probe_ip=False), probe=lambda cmd, timeout: fixture['commands'].get(' '.join(cmd), {'returncode': 1, 'stdout': '', 'stderr': ''}), host=fixture['host'])
-        self.assertFalse(any(item['ok'] for item in result.data['eligible_pools']))
+        self.assertFalse(any(item['ok'] for item in result.data['eligible_pools'] if item['id'] != 's1-cpu'))  # s1-cpu needs no GPU
         self.assertIn('driver', [item['id'] for item in result.data['blockers']])
 
     def test_plan_launching_soon(self):

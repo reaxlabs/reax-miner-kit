@@ -53,9 +53,9 @@ class DescriptorTest(unittest.TestCase):
 
     def test_placeholders_all_in_digests_only(self):
         value = bundled()
-        self.assertEqual(descriptor.placeholder_digests(value), ['miner', 's1_fast_runtime', 's1_pro_runtime'])
+        self.assertEqual(descriptor.placeholder_digests(value), ['miner', 's1_cpu_runtime', 's1_fast_runtime', 's1_lite_runtime', 's1_lite_runtime_jetson', 's1_pro_runtime'])
         text = descriptor.BUNDLED.read_text()
-        self.assertEqual(len(descriptor.PLACEHOLDER_DIGEST.findall(text)), 3)
+        self.assertEqual(len(descriptor.PLACEHOLDER_DIGEST.findall(text)), 6)
         self.assertFalse(value['images']['public'])
 
     def test_placeholders_refused_in_final_release(self):
@@ -80,7 +80,7 @@ class DescriptorTest(unittest.TestCase):
 
     def test_doctor_warns_about_placeholders(self):
         result = run_doctor('NVIDIA H100 80GB HBM3, 81559, 580.65')
-        self.assertEqual(result.data['placeholder_digests'], ['miner', 's1_fast_runtime', 's1_pro_runtime'])
+        self.assertEqual(result.data['placeholder_digests'], ['miner', 's1_cpu_runtime', 's1_fast_runtime', 's1_lite_runtime', 's1_lite_runtime_jetson', 's1_pro_runtime'])
         self.assertTrue(any('placeholder image digests' in w for w in result.warnings))
         self.assertFalse(result.data['real_mining_possible'])
 

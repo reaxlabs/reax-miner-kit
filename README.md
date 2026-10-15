@@ -86,6 +86,8 @@ Real mining requires Linux x86_64 with NVIDIA, driver R580+ and the NVIDIA Docke
 
 Release 1.2.0rc1 turns the s1-pro pool on (inference split inside the GPU tier: s1-fast 0.35 / s1-pro 0.65; an empty pool's share goes to the other pool). s1-fast miners on 1.1.0-rc2 keep working: the miner protocol (`reax-s1/1`) and the s1-fast manifest `ff6e01b983d48024` are unchanged.
 
+The same release also describes two smaller pools: **s1-lite** (8 GB+ NVIDIA GPU or Jetson Orin with JetPack 6; sidecar port 8103) and **s1-cpu** (no GPU, x86_64 or aarch64; sidecar port 8104). Choose one with `reaxctl doctor --pool s1-lite` / `--pool s1-cpu` and `reaxctl install --pool …`; `doctor` without `--pool` checks s1-fast and lists `recommended_pool` for your hardware. Details: `docs/RUN.md`.
+
 - **Hardware:** one NVIDIA GPU with 80–96 GB, driver R580+, about 80 GB free disk (52 GB bf16 weights plus the runtime image). Measured bit-identical: RTX PRO 6000 96 GB and H100 80 GB. H200/B200 are expected to work but are not measured; A100 80 GB is not measured (at your own risk). `doctor --pool s1-pro` warns about unmeasured cards.
 - **Weights are gated on Hugging Face.** Accept the gate for `surogate/rune-26b-a4b-GGUF` with your own account and run `hf auth login`. REAX never mirrors the weights and `reaxctl` never reads or prints your token. `doctor --pool s1-pro --check-hf` asks huggingface.co whether your token can read the pinned revision (token presence is always checked locally).
 - **Deterministic runtime only:** the runtime image (`reax-s1-pro-runtime`, deterministic vLLM 0.30.0) runs with `RUNE_DETERMINISTIC=1`. Stock vLLM and FP8 builds fail the reference check.
@@ -108,7 +110,7 @@ From 16 October 2026 12:00 UTC the subnet runs the engine competition and the us
 
 The kit handles only hotkeys and public coldkey addresses. Never provide a coldkey, recovery phrase or signing authority. It never spends real TAO or signs a real registration payment. A person approves registration in their own wallet. Rehearsal funding uses disposable local development identities. Secret files use mode 0600. No telemetry is sent. Administrator actions are shown explicitly; the kit does not invoke interactive sudo.
 
-Expose only the real miner port (default 8091). Keep runtime ports 8101, 8102 and 8000 private. The rehearsal miner binds a local private IPv4 address; keep its port range within your trusted network.
+Expose only the real miner port (default 8091). Keep runtime ports 8101, 8102, 8103, 8104 and 8000 private. The rehearsal miner binds a local private IPv4 address; keep its port range within your trusted network.
 
 `./reaxctl net-policy --json` lists the configured destinations and conditions. The bundled descriptor currently lists:
 
@@ -122,7 +124,7 @@ Expose only the real miner port (default 8091). Keep runtime ports 8101, 8102 an
 | Loopback chain endpoint | Rehearsal chain (configured port; default localnet base 19951) |
 | `entrypoint-finney.opentensor.ai:443` | Mainnet chain when enabled |
 | `test.finney.opentensor.ai:443` | Testnet chain when enabled |
-| Configured global external IP, ports 8101/8102/8000 | TCP privacy probes only with `verify --probe-ip` |
+| Configured global external IP, ports 8101/8102/8103/8104/8000 | TCP privacy probes only with `verify --probe-ip` |
 | Docker Hub / nvcr.io | Base images when building source Dockerfiles |
 | `api.ipify.org` | Public-IP echo only with `--probe-ip` |
 
@@ -166,7 +168,7 @@ this policy even though they can type the flags. The kit never signs or spends r
 
 Containers retain host networking and must bind sidecars to loopback. Both drop all capabilities,
 set no-new-privileges and rotate json-file logs (10m, three files). The miner port must be an
-integer 1024–65535 excluding 8101, 8102 and 8000. Compose dollar signs are escaped; wallet
+integer 1024–65535 excluding 8101, 8102, 8103, 8104 and 8000. Compose dollar signs are escaped; wallet
 mounts honour REAX_WALLET_DIR. REAX_HOME, secrets and rollback directories are private (0700);
 generated files use atomic replacement with 0600 secrets and 0644 public unit/compose files,
 refusing symlink targets. Hotkey creation sets umask 077 before the wallet backend writes.

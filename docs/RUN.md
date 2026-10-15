@@ -37,7 +37,7 @@ model weights or require Docker/GPU.
 Both containers use host networking with the runtime bound to loopback by the pinned
 runtime configuration. Only the selected hotkey and `coldkeypub.txt` are mounted;
 the wallet directory and coldkey are never mounted. Keep miner port 8091 reachable
-for real networks; never publish sidecar ports 8101/8102/8000. Run `wallet status`
+for real networks; never publish sidecar ports 8101/8102/8103/8104/8000. Run `wallet status`
 and complete human registration before starting a real miner. Variable subnet
 emissions can be zero.
 
@@ -80,3 +80,26 @@ Kit 0.1.5: system units run as the non-root invoking UID with NoNewPrivileges/Pr
 Compose drops all capabilities and rotates logs; wallet mounts honour REAX_WALLET_DIR.
 Install and update both require explicit acceptance for a stored manifest change. See
 README's hardening section for offline refresh, locking/pruning guidance and RPC limitations.
+
+## Small-GPU, Jetson and CPU pools (s1-lite, s1-cpu)
+
+Release 1.2.0rc1 describes two more pools next to s1-fast and s1-pro, both `enabled_at_launch: true`.
+`install` writes `REAX_FEATURE_TIERED_POOLS=1` into `miner.env` for them; the miner release you run
+must accept these pools on your network (descriptors may also mark a pool `dev_only: true`, which
+limits it to localnet/testnet and makes `install` refuse mainnet). The runtime images are not
+published yet (`sha256:TBD-*` placeholders), so a real install needs a local build via
+`REAX_SOURCE_DIR`.
+
+| Pool | Model | Hardware | Sidecar port | Disk |
+| --- | --- | --- | --- | --- |
+| `s1-lite` | Plumb-4B v5 GGUF Q8_0 (llama.cpp CUDA) | NVIDIA GPU with 8 GB or more on x86_64, or a Jetson Orin (JetPack 6, L4T R36+, 8 GB unified memory) | 8103 | 8 GB |
+| `s1-cpu` | Gutsy 0.8B v0.4 GGUF Q8_0 (llama.cpp CPU) | No GPU; Linux x86_64 (AVX2) or aarch64; 4+ cores, 4+ GB RAM | 8104 | 3 GB |
+
+`reaxctl doctor --pool s1-lite` (or `--pool s1-cpu`) checks only what that pool needs (doctor checks one pool at a time, default s1-fast):
+the NVIDIA driver, container runtime and GPU are not required for `s1-cpu`. On a Jetson
+the driver check is the L4T release from `/etc/nv_tegra_release`, GPU memory is system
+RAM, and Docker must have the `nvidia` runtime registered. Without `--pool`, doctor
+checks s1-fast, and reports `hardware_ok` for each pool and a `recommended_pool` (`s1-fast`, else `s1-lite`,
+else `s1-cpu`). Weights are fetched with `weights.files`, so only the single GGUF file
+is downloaded. On a Jetson the compose file uses `runtime: nvidia` and the
+`s1_lite_runtime_jetson` image; on x86 it reserves the NVIDIA device.

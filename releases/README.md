@@ -46,3 +46,7 @@ commits, and optional source.commit is checked after public checkout. Refreshed 
 must not downgrade known release versions or regress a live launch. Set --offline or
 REAX_OFFLINE=1 to suppress refresh. The validated descriptor remains unsigned: HTTPS and
 schema checks are not a cryptographic publisher signature.
+
+### Tiered pools (optional pool fields)
+
+`s1-lite` and `s1-cpu` use these optional `pools[]` fields (absent means the `s1-fast`/`s1-pro` behaviour): `tier` (`gpu`, `small`, `cpu`), `arch` (list of `x86_64`/`aarch64`, default `["x86_64"]`), `accelerator` (`nvidia`, `none`; `none` allows `gpu.count: 0`, `gpu.vendor: "none"`, `gpu.min_vram_gb: 0`), `jetson` (bool; needs `nvidia` and `aarch64`), `weights.files` (exact file names; only these are downloaded), `min_ram_gb` / `min_cpu_cores` (per-pool override of `requirements`), and `dev_only` (localnet/testnet only; mainnet install is refused). Image keys `s1_lite_runtime`, `s1_lite_runtime_jetson` (linux/arm64, Jetson) and `s1_cpu_runtime` are optional in `images`; in 1.2.0rc1 they carry `sha256:TBD-*` placeholders like the others until the subnet's docker.yml publishes them. Manifest ids of `s1-lite` (`8c7297e14e5e89bf`) and `s1-cpu` (`f2c9981f0766f2a6`) must equal the subnet release's manifests (`sha256` of the canonical JSON, first 16 hex). Sidecar ports 8103 and 8104 are listed in `never_publish_ports`.

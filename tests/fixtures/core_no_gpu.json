@@ -42,6 +42,6 @@
   },
   "expect": {
     "status": "ok",
-    "eligible": []
+    "eligible": ["s1-cpu"]
   }
 }

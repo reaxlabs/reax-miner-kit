@@ -69,12 +69,38 @@ def unmeasured_gpus(pool, gpus):
     return sorted({gpu['name'] for gpu in gpus if any(t.lower() in gpu['name'].lower() for t in tokens)})
 
 
+RAM_TOLERANCE = 0.9  # per-pool RAM overrides are nominal sizes (an "8 GB" Jetson reports ~7.4 GiB)
+
+
+def pool_host_reason(pool, host):
+    """Why this pool cannot run on the host's OS/architecture, or None."""
+    arch = sysprobe.normalized_arch(host['arch'])
+    archs = pool.get('arch', ['x86_64'])
+    if host['os'] not in ('linux', 'wsl2') or arch not in archs:
+        if archs == ['x86_64']:
+            return 'Linux x86_64 or WSL2 is required.'
+        return 'Linux on {} is required.'.format(' or '.join(archs))
+    if pool.get('accelerator', 'nvidia') == 'nvidia' and arch == 'aarch64' and not (pool.get('jetson') and host.get('jetson')):
+        return 'NVIDIA pools on aarch64 need a Jetson Orin with JetPack 6 (L4T R36+).'
+    return None
+
+
 def diagnose(args, probe=None, host=None, release=None):
     probe = probe or sysprobe.run
     release = release or descriptor.load(args, fetch=True)
     config = state.load_config(args)
     host = host or sysprobe.facts(state.home(args), config.get('miner_port', 8091))
     blockers, warnings, gpus = [], [], []
+    mode = state.mode(args)
+    jetson = host.get('jetson')
+    pools = release['pools']
+    selected_id = getattr(args, 'pool', None) or config.get('pool') or 's1-fast'
+    accel = lambda pool: pool.get('accelerator', 'nvidia')
+    is_active = lambda pool: selected_id == pool['id']
+    selected = next((p for p in pools if p['id'] == selected_id), None)
+    # Host-wide blockers (GPU, driver, toolkit, OS, size) describe the selected pool only (default s1-fast): s1-pro, s1-lite and s1-cpu must not block hosts that mine another pool.
+    target = [p for p in pools if is_active(p)]
+    needs_nvidia = any(accel(p) == 'nvidia' for p in target)
 
     def block(key, message, fix):
         blockers.append({'id': key, 'message': message, 'fix': fix})
@@ -93,6 +119,15 @@ def diagnose(args, probe=None, host=None, release=None):
                              'driver_version': driver, 'driver_ok': major >= 580})
             except (ValueError, IndexError):
                 warnings.append('Could not parse one nvidia-smi GPU row.')
+    if jetson:
+        # Jetson has unified memory: the GPU can use system RAM, and the "driver" is the L4T release of JetPack.
+        l4t = jetson.get('l4t')
+        try:
+            l4t_ok = bool(l4t) and int(str(l4t).split('.')[0]) >= 36
+        except ValueError:
+            l4t_ok = False
+        gpus = [{'name': jetson.get('model') or 'NVIDIA Jetson', 'vendor': 'NVIDIA', 'vram_gb': host.get('ram_gb'),
+                 'driver_version': 'L4T ' + str(l4t) if l4t else None, 'driver_ok': l4t_ok, 'jetson': True}]
     if not gpus:
         pci = call(['lspci'])
         for line in pci['stdout'].splitlines():
@@ -101,13 +136,21 @@ def diagnose(args, probe=None, host=None, release=None):
                 gpus.append({'name': line, 'vendor': vendor, 'vram_gb': None, 'driver_version': None, 'driver_ok': False})
         if host['os'] == 'macos' and host['arch'] in ('arm64', 'aarch64'):
             gpus.append({'name': 'Apple GPU', 'vendor': 'Apple', 'vram_gb': None, 'driver_version': None, 'driver_ok': False})
-    if not any(gpu['vendor'] == 'NVIDIA' and gpu['vram_gb'] is not None for gpu in gpus):
+    if not needs_nvidia:
+        pass
+    elif not any(gpu['vendor'] == 'NVIDIA' and gpu['vram_gb'] is not None for gpu in gpus):
         block('gpu', 'No usable NVIDIA GPU detected; AMD and Apple GPUs are unsupported for mining.', 'Use a Linux machine with an NVIDIA GPU and driver R580+ (a Mac or AMD machine can only act as a controller): https://www.nvidia.com/en-us/drivers/')
     elif any(not gpu['driver_ok'] for gpu in gpus if gpu['vendor'] == 'NVIDIA'):
-        block('driver', 'NVIDIA driver R580 or newer is required for CUDA 13.', 'Install an R580+ driver using https://www.nvidia.com/en-us/drivers/')
-    supported = host['os'] in ('linux', 'wsl2') and host['arch'].lower() in ('x86_64', 'amd64')
-    if not supported:
-        block('os', 'Real mining requires Linux x86_64 or WSL2 with NVIDIA passthrough.', 'Mine on Linux x86_64 (or WSL2 with an NVIDIA GPU). WSL: https://docs.nvidia.com/cuda/wsl-user-guide/index.html')
+        if jetson:
+            block('driver', 'JetPack 6 (L4T R36 or newer) is required on Jetson.', 'Flash JetPack 6 or newer: https://developer.nvidia.com/embedded/jetpack')
+        else:
+            block('driver', 'NVIDIA driver R580 or newer is required for CUDA 13.', 'Install an R580+ driver using https://www.nvidia.com/en-us/drivers/')
+    unsupported = [reason for reason in (pool_host_reason(p, host) for p in target) if reason]
+    if unsupported:
+        if all(accel(p) == 'nvidia' and p.get('arch', ['x86_64']) == ['x86_64'] for p in target):
+            block('os', 'Real mining requires Linux x86_64 or WSL2 with NVIDIA passthrough.', 'Mine on Linux x86_64 (or WSL2 with an NVIDIA GPU). WSL: https://docs.nvidia.com/cuda/wsl-user-guide/index.html')
+        else:
+            block('os', 'Real mining requires a supported OS and CPU architecture for the selected pool. ' + unsupported[0], 'Use Linux on x86_64 or aarch64 for CPU pools; Jetson Orin (JetPack 6) or x86_64 for the small-GPU pool.')
     version = call(['docker', '--version'])
     info = call(['docker', 'info', '--format', '{{json .}}'])
     compose = call(['docker', 'compose', 'version'])
@@ -131,7 +174,7 @@ def diagnose(args, probe=None, host=None, release=None):
         block('compose', 'Docker Compose plugin is unavailable.', 'Install the Compose plugin: https://docs.docker.com/compose/install/linux/')
     toolkit = call(['nvidia-container-cli', '--version'])
     toolkit_ok = toolkit['returncode'] == 0 or docker['nvidia_runtime']
-    if not toolkit_ok or not docker['nvidia_runtime']:
+    if needs_nvidia and (not toolkit_ok or not docker['nvidia_runtime']):
         block('toolkit', 'NVIDIA container runtime is not configured.', 'Install NVIDIA Container Toolkit for your distro and configure Docker: ' + NVIDIA_DOC)
     ntp = call(['timedatectl', 'show', '-p', 'NTPSynchronized', '--value'])
     ntp_ok = ntp['returncode'] == 0 and ntp['stdout'].strip().lower() in ('yes', 'true', 'ntpsynchronized=yes')
@@ -147,9 +190,16 @@ def diagnose(args, probe=None, host=None, release=None):
     if not host['miner_port_free']:
         block('miner_port', 'The configured miner port is in use.', 'Stop the conflicting listener or choose a free miner_port in config.json; keep sidecar ports private.')
     req = release['requirements']
-    for key, minimum, label in [('cpu_cores', req['cpu_cores'], 'CPU cores'), ('ram_gb', req['ram_gb'], 'RAM GB')]:
-        if host.get(key) is None or host[key] < minimum:
-            block(key, 'Mining requires at least {} {}.'.format(minimum, label), 'Use a host with the required capacity.')
+    def need(pool, key):
+        """(nominal minimum, minimum the host must reach) for cpu_cores/ram_gb; per-pool overrides win over the global requirement."""
+        override = pool.get('min_' + key if key == 'ram_gb' else 'min_cpu_cores')
+        if override is None:
+            return req[key], req[key]
+        return override, override * (RAM_TOLERANCE if key == 'ram_gb' else 1)
+    for key, label in [('cpu_cores', 'CPU cores'), ('ram_gb', 'RAM GB')]:
+        minimum = max([need(p, key) for p in target] or [(req[key], req[key])], key=lambda pair: pair[1])
+        if host.get(key) is None or host[key] < minimum[1]:
+            block(key, 'Mining requires at least {} {}.'.format(minimum[0], label), 'Use a host with the required capacity.')
     python_version = tuple(int(x) for x in host['python_version'].split('.')[:2])
     python_min = tuple(int(x) for x in req['python_min'].split('.')[:2])
     rehearsal = python_version >= python_min
@@ -161,52 +211,72 @@ def diagnose(args, probe=None, host=None, release=None):
     elif not host.get('python_tar_filter', True):
         rehearsal = False
         block('python_tarfile', TARFILE_MESSAGE, TARFILE_FIX)
-    eligible = []
-    selected_id = getattr(args, 'pool', None) or config.get('pool') or 's1-fast'
+    eligible, fits = [], {}
+    if selected and selected.get('dev_only') and mode == 'mainnet':
+        block('dev_pool_mainnet', selected['id'] + ' is a development-network pool and cannot be used on mainnet.', 'Use --mode localnet or testnet, or select a launch pool such as s1-fast.')
     placeholders = descriptor.placeholder_digests(release)
     if placeholders:
         warnings.append('This release descriptor still has placeholder image digests (' + ', '.join(placeholders) + '); it is a release candidate in preparation. Do not use it for real mining.')
     cc = {'checked': False, 'on': None}
     hf_gate = None
-    for pool in release['pools']:
-        active = pool['id'] == selected_id
+    for pool in pools:
+        active = is_active(pool)
         gpu_req = pool['gpu']
         reasons = []
-        fitting = [gpu for gpu in gpus if gpu['vendor'].lower() == gpu_req['vendor'].lower() and gpu['driver_ok'] and gpu['vram_gb'] is not None and gpu['vram_gb'] >= gpu_req['min_vram_gb'] - 1 and (gpu_req.get('max_vram_gb') is None or gpu['vram_gb'] <= gpu_req['max_vram_gb'])]
-        if len(fitting) < gpu_req['count']:
-            reasons.append('Requires {} {} GPU(s) with {} GB VRAM and R580+ driver.'.format(gpu_req['count'], gpu_req['vendor'], gpu_req['min_vram_gb']))
-            if active:
-                block('gpu_capacity_' + pool['id'], reasons[-1], 'Select a pool matching your GPU capacity; supported hardware is listed in the release descriptor.')
-        # a '24 GB' card reports ~23.99 GiB, so only warn well below the nominal size
-        elif active and any(gpu['vram_gb'] < gpu_req['min_vram_gb'] * 0.97 for gpu in fitting):
-            warnings.append(pool['id'] + ': usable VRAM is slightly below the nominal minimum; accepted within 1 GB tolerance.')
-        if active and pool['id'] == 's1-pro':
-            unmeasured = unmeasured_gpus(pool, fitting)
-            if unmeasured:
-                warnings.append('s1-pro: ' + ', '.join(unmeasured) + ' has not been measured bit-identical to the reference ('
-                                + (gpu_req.get('unmeasured_note') or 'run reaxctl selfcheck before committing') + ' Run reaxctl selfcheck before committing on chain.')
-            cc = confidential_compute(call)
-            if cc['on']:
-                warnings.append('s1-pro: confidential-compute mode is ON on this GPU. Without the UVA fix vLLM returns garbage; install with reaxctl install --pool s1-pro --cc-fix (sets REAX_VLLM_DISABLE_UVA=1 and mounts runtimes/vllm-ccfix from a reviewed subnet checkout).')
-            hf_gate = hf_gate_status(pool['weights'], getattr(args, 'check_hf', False))
-            if hf_gate['gated'] and not hf_gate['token_present']:
-                warnings.append('s1-pro: no Hugging Face token found. The weights are gated: accept the gate for ' + pool['weights']['repo'] + ' with your own account at https://huggingface.co/' + pool['weights']['repo'] + ' and run hf auth login (reaxctl never reads or prints the token).')
-            elif hf_gate['checked'] and hf_gate['accessible'] is False:
-                warnings.append('s1-pro: the pinned weights revision is not accessible with your Hugging Face token; accept the gate at https://huggingface.co/' + pool['weights']['repo'] + ' with the same account.')
-        if not supported:
-            reasons.append('Linux x86_64 or WSL2 is required.')
+        host_reason = pool_host_reason(pool, host)
+        if accel(pool) == 'nvidia':
+            fitting = [gpu for gpu in gpus if gpu['vendor'].lower() == gpu_req['vendor'].lower() and gpu['driver_ok'] and gpu['vram_gb'] is not None and gpu['vram_gb'] >= gpu_req['min_vram_gb'] - 1 and (gpu_req.get('max_vram_gb') is None or gpu['vram_gb'] <= gpu_req['max_vram_gb'])]
+            if len(fitting) < gpu_req['count']:
+                reasons.append('Requires {} {} GPU(s) with {} GB VRAM and {}.'.format(gpu_req['count'], gpu_req['vendor'], gpu_req['min_vram_gb'], 'JetPack 6 (L4T R36+)' if pool.get('jetson') and jetson else 'R580+ driver'))
+                if pool in target:
+                    block('gpu_capacity_' + pool['id'], reasons[-1], 'Select a pool matching your GPU capacity; supported hardware is listed in the release descriptor.')
+            # a '24 GB' card reports ~23.99 GiB, so only warn well below the nominal size
+            elif pool in target and any(gpu['vram_gb'] < gpu_req['min_vram_gb'] * 0.97 for gpu in fitting) and not jetson:
+                warnings.append(pool['id'] + ': usable VRAM is slightly below the nominal minimum; accepted within 1 GB tolerance.')
+            if active and pool['id'] == 's1-pro':
+                unmeasured = unmeasured_gpus(pool, fitting)
+                if unmeasured:
+                    warnings.append('s1-pro: ' + ', '.join(unmeasured) + ' has not been measured bit-identical to the reference ('
+                                    + (gpu_req.get('unmeasured_note') or 'run reaxctl selfcheck before committing') + ' Run reaxctl selfcheck before committing on chain.')
+                cc = confidential_compute(call)
+                if cc['on']:
+                    warnings.append('s1-pro: confidential-compute mode is ON on this GPU. Without the UVA fix vLLM returns garbage; install with reaxctl install --pool s1-pro --cc-fix (sets REAX_VLLM_DISABLE_UVA=1 and mounts runtimes/vllm-ccfix from a reviewed subnet checkout).')
+                hf_gate = hf_gate_status(pool['weights'], getattr(args, 'check_hf', False))
+                if hf_gate['gated'] and not hf_gate['token_present']:
+                    warnings.append('s1-pro: no Hugging Face token found. The weights are gated: accept the gate for ' + pool['weights']['repo'] + ' with your own account at https://huggingface.co/' + pool['weights']['repo'] + ' and run hf auth login (reaxctl never reads or prints the token).')
+                elif hf_gate['checked'] and hf_gate['accessible'] is False:
+                    warnings.append('s1-pro: the pinned weights revision is not accessible with your Hugging Face token; accept the gate at https://huggingface.co/' + pool['weights']['repo'] + ' with the same account.')
+        if host_reason:
+            reasons.append(host_reason)
+        resources = True
+        for key, label in [('cpu_cores', 'CPU cores'), ('ram_gb', 'GB RAM')]:
+            nominal, floor = need(pool, key)
+            if host.get(key) is None or host[key] < floor:
+                resources = False
+                if pool.get('min_' + key if key == 'ram_gb' else 'min_cpu_cores') is not None:
+                    reasons.append('Requires at least {} {}.'.format(nominal, label))
         if host['disk_free_gb'] < req['disk_gb'][pool['id']]:
             reasons.append('Insufficient free disk space for this pool.')
-            if active:
+            if pool in target:
                 block('disk_' + pool['id'], reasons[-1], 'Free space in REAX_HOME or select a larger disk; {} GB required.'.format(req['disk_gb'][pool['id']]))
-        eligible.append({'id': pool['id'], 'ok': not reasons, 'enabled_at_launch': pool['enabled_at_launch'],
-                         'reasons': reasons if active else ['Not the selected pool; listed for reference.']})
-    available = any(pool['ok'] for pool in eligible)
+        hardware_ok = not reasons
+        fits[pool['id']] = hardware_ok and resources
+        if pool.get('dev_only'):
+            if mode == 'mainnet':
+                reasons.append('Development networks only (localnet/testnet); not available on mainnet.')
+            elif hardware_ok and not active:
+                reasons.append('Development-network pool; select it with --pool {} to use it.'.format(pool['id']))
+        eligible.append({'id': pool['id'], 'ok': not reasons, 'hardware_ok': hardware_ok, 'enabled_at_launch': pool['enabled_at_launch'],
+                         'dev_only': bool(pool.get('dev_only')), 'tier': pool.get('tier', 'gpu'),
+                         'reasons': reasons if active or pool.get('dev_only') else ['Not the selected pool; listed for reference.']})
+    recommended = next((i for i in ('s1-fast', 's1-lite', 's1-cpu')
+                        if fits.get(i) and not (mode == 'mainnet' and next(p for p in pools if p['id'] == i).get('dev_only'))), None)
+    available = any(item['ok'] for item in eligible if item['id'] in {p['id'] for p in target})  # a no-GPU host must not look ready just because s1-cpu fits
     common_blockers = [item for item in blockers if not item['id'].startswith(('disk_', 'gpu_capacity_'))]
     launch_pools = {pool['id'] for pool in release['pools'] if pool['enabled_at_launch']}
     ready = any(pool['ok'] and pool['id'] in launch_pools for pool in eligible) and not common_blockers and release['status']['live'] and release['status']['netuid'] is not None and release['images']['public']
     source_ok = bool(os.environ.get('REAX_SOURCE_DIR')) or bool(release['source'].get('public'))
-    data = dict(host, gpus=gpus, docker=docker, nvidia_container_toolkit=toolkit_ok, ntp_synchronized=ntp_ok,
+    data = dict(host, jetson=jetson, recommended_pool=recommended, gpus=gpus, docker=docker, nvidia_container_toolkit=toolkit_ok, ntp_synchronized=ntp_ok,
                 eligible_pools=eligible, rehearsal_capable=rehearsal, rehearsal_possible=bool(rehearsal and source_ok), rehearsal_source_available=source_ok, real_mining_possible=bool(ready), blockers=blockers,
                 mode_default='localnet', huggingface={'checked': False, 'reachable': None}, public_ip=None,
                 confidential_compute=cc, hf_gate=hf_gate, placeholder_digests=placeholders)

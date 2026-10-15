@@ -8,21 +8,27 @@
     "netuid": 92,
     "network": "finney",
     "testnet_netuid": null,
-    "notes": "Chain status and release availability are reported separately. Real-network actions require status.live=true; source and images are independently gated by their public availability fields. Localnet rehearsal needs a subnet source checkout when source.public=false. Testnet requires its own configured netuid. Release 1.2.0rc1 enables the s1-pro pool (inference split s1-fast 0.35 / s1-pro 0.65; an empty pool share goes to the other pool)."
+    "notes": "Chain status and release availability are reported separately. Real-network actions require status.live=true; source and images are independently gated by their public availability fields. Localnet rehearsal needs a subnet source checkout when source.public=false. Testnet requires its own configured netuid. Release 1.2.0rc1 enables four pools: s1-fast, s1-pro (inference split s1-fast 0.35 / s1-pro 0.65; an empty pool share goes to the other pool), s1-lite (small NVIDIA GPU or Jetson Orin) and s1-cpu (CPU only)."
   },
   "minimum_release": "1.1.0rc2",
   "images": {
     "miner": "ghcr.io/reaxlabs/reax-miner",
     "s1_fast_runtime": "ghcr.io/reaxlabs/reax-s1-fast-runtime",
     "s1_pro_runtime": "ghcr.io/reaxlabs/reax-s1-pro-runtime",
+    "s1_lite_runtime": "ghcr.io/reaxlabs/reax-s1-lite-runtime",
+    "s1_lite_runtime_jetson": "ghcr.io/reaxlabs/reax-s1-lite-runtime-jetson",
+    "s1_cpu_runtime": "ghcr.io/reaxlabs/reax-s1-cpu-runtime",
     "tag": "1.2.0-rc1",
     "digests": {
       "miner": "sha256:TBD-miner",
       "s1_fast_runtime": "sha256:TBD-s1_fast_runtime",
-      "s1_pro_runtime": "sha256:TBD-s1_pro_runtime"
+      "s1_pro_runtime": "sha256:TBD-s1_pro_runtime",
+      "s1_lite_runtime": "sha256:TBD-s1_lite_runtime",
+      "s1_lite_runtime_jetson": "sha256:TBD-s1_lite_runtime_jetson",
+      "s1_cpu_runtime": "sha256:TBD-s1_cpu_runtime"
     },
     "public": false,
-    "note": "PLACEHOLDER digests (sha256:TBD-*) until docker.yml publishes 1.2.0-rc1; replace all three and set public:true in one edit. Validation refuses placeholders once images are public or the release is live."
+    "note": "PLACEHOLDER digests (sha256:TBD-*) until docker.yml publishes 1.2.0-rc1; replace all six and set public:true in one edit. s1_lite_runtime_jetson is the linux/arm64 (Jetson, JetPack 6) build of the s1-lite runtime; s1_lite_runtime and s1_cpu_runtime also need a linux/arm64 variant for aarch64 CPU hosts (multi-arch index or separate digests; to be decided when the subnet publishes them). Validation refuses placeholders once images are public or the release is live."
   },
   "source": {
     "git": "https://github.com/reaxlabs/reax-subnet",
@@ -94,6 +100,70 @@
           "REAX_VLLM_DISABLE_UVA": "1"
         }
       }
+    },
+    {
+      "id": "s1-lite",
+      "model": "Plumb-4B v5 GGUF Q8_0 (s1-lite)",
+      "weights": {
+        "repo": "crh225/plumb-4b-GGUF",
+        "revision": "71c1c57e523219124f7be9c486d475d19891185f",
+        "gated": false,
+        "size_gb": 4.48,
+        "files": [
+          "plumb-4b-v5-Q8_0.gguf"
+        ]
+      },
+      "manifest_id": "8c7297e14e5e89bf",
+      "commitment": "reax-s1/1:s1-lite:8c7297e14e5e89bf",
+      "gpu": {
+        "min_vram_gb": 8,
+        "count": 1,
+        "vendor": "NVIDIA",
+        "measured": [],
+        "unmeasured_note": "NVIDIA GPU with 8 GB or more, or a Jetson Orin (JetPack 6) with 8 GB unified memory; not yet calibrated on real hardware."
+      },
+      "sidecar_port": 8103,
+      "enabled_at_launch": true,
+      "tier": "small",
+      "arch": [
+        "x86_64",
+        "aarch64"
+      ],
+      "accelerator": "nvidia",
+      "jetson": true,
+      "min_ram_gb": 8,
+      "min_cpu_cores": 4
+    },
+    {
+      "id": "s1-cpu",
+      "model": "Gutsy 0.8B v0.4 GGUF Q8_0 (s1-cpu)",
+      "weights": {
+        "repo": "kouhxp/gutsy",
+        "revision": "f9995fe26a337f1a4ea3f1a5ed38c9799e5a8f63",
+        "gated": false,
+        "size_gb": 0.81,
+        "files": [
+          "gutsy-0.8b-v04-q8_0.gguf"
+        ]
+      },
+      "manifest_id": "f2c9981f0766f2a6",
+      "commitment": "reax-s1/1:s1-cpu:f2c9981f0766f2a6",
+      "gpu": {
+        "min_vram_gb": 0,
+        "count": 0,
+        "vendor": "none"
+      },
+      "sidecar_port": 8104,
+      "enabled_at_launch": true,
+      "tier": "cpu",
+      "arch": [
+        "x86_64",
+        "aarch64"
+      ],
+      "accelerator": "none",
+      "jetson": false,
+      "min_ram_gb": 4,
+      "min_cpu_cores": 4
     }
   ],
   "requirements": {
@@ -101,7 +171,9 @@
     "ram_gb": 32,
     "disk_gb": {
       "s1-fast": 20,
-      "s1-pro": 80
+      "s1-pro": 80,
+      "s1-lite": 8,
+      "s1-cpu": 3
     },
     "driver_min": "R580 (CUDA 13)",
     "python_min": "3.10",
@@ -111,6 +183,8 @@
     "never_publish_ports": [
       8101,
       8102,
+      8103,
+      8104,
       8000
     ],
     "os": "Linux x86_64 (also WSL2 with NVIDIA GPU passthrough)",

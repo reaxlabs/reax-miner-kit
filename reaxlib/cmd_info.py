@@ -15,7 +15,7 @@ RULES = [
     'Default to localnet rehearsal. Real-network modes require a live descriptor and netuid; mainnet requires human-approved --confirm-mainnet.',
     'Rewards are variable subnet emissions; can be zero.',
     'In testnet/mainnet run reaxctl selfcheck after install and before suggesting a registration; do not suggest registering while it fails.',
-    'Never publish sidecar ports 8101, 8102 or 8000; miner port defaults to 8091.',
+    'Never publish sidecar ports 8101, 8102, 8103, 8104 or 8000; miner port defaults to 8091.',
     'No telemetry; disclose every contacted endpoint in net-policy.',
 ]
 COMMANDS = ['doctor', 'plan', 'install', 'selfcheck', 'wallet hotkey', 'wallet coldkeypub', 'wallet status', 'register', 'start', 'stop', 'restart', 'status', 'logs', 'run', 'verify', 'service install', 'service uninstall', 'service status', 'update check', 'update apply', 'update timer install', 'update timer uninstall', 'localnet up', 'localnet down', 'localnet status', 'uninstall', 'spec', 'agent-rules', 'net-policy', 'version']

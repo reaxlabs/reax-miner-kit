@@ -47,9 +47,6 @@
   },
   "expect": {
     "status": "ok",
-    "eligible": [
-      "s1-fast",
-      "s1-pro"
-    ]
+    "eligible": ["s1-fast", "s1-pro", "s1-lite", "s1-cpu"]
   }
 }
