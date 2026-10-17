@@ -1,7 +1,9 @@
 """Reference self-check: run the release's reax-selfcheck in the installed miner image against the runtime sidecar."""
 import json
 import os
+import pathlib
 from .cli import add_common
+from . import backends as fanout
 from .result import Result
 from . import cmd_install as io
 from .cmd_runtime import NOTICE, compose, sanitize
@@ -19,16 +21,20 @@ def _containers(out):
     return value if isinstance(value, list) and all(isinstance(c, dict) for c in value) else None
 
 
-def runtime_state(home):
-    """'healthy', 'starting', 'unhealthy', 'stopped' or 'unknown' for the compose runtime service."""
-    rc, out, _ = compose(home, 'ps', '--all', '--format', 'json', 'runtime')
+def runtime_state(home, names=('runtime',)):
+    """'healthy', 'starting', 'unhealthy', 'stopped' or 'unknown' for the compose runtime service (the worst of them with several backends)."""
+    rc, out, _ = compose(home, 'ps', '--all', '--format', 'json', *names)
     containers = _containers(out) if rc == 0 else None
     if containers is None:
         return 'unknown'
-    runtime = next((c for c in containers if c.get('Service', 'runtime') == 'runtime'), None)
-    if not runtime or runtime.get('State') != 'running':
-        return 'stopped'
-    return runtime.get('Health') or 'unknown'
+    states = []
+    for name in names:
+        runtime = next((c for c in containers if c.get('Service', 'runtime') == name), None)
+        states.append('stopped' if not runtime or runtime.get('State') != 'running' else runtime.get('Health') or 'unknown')
+    for worst in ('stopped', 'unhealthy', 'unknown', 'starting'):
+        if worst in states:
+            return worst
+    return 'healthy'
 
 
 def miner_image(home):
@@ -49,7 +55,7 @@ def miner_env(home):
         return values
     for line in lines:
         key, sep, value = line.partition('=')
-        if sep and (key in ('REAX_MODEL', 'REAX_RUNTIME_TOKEN_FILE') or (key.startswith('REAX_') and key.endswith('_RUNTIME_URL'))):
+        if sep and (key in ('REAX_MODEL', 'REAX_RUNTIME_TOKEN_FILE') or (key.startswith('REAX_') and key.endswith(('_RUNTIME_URL', '_RUNTIME_URLS')))):
             values[key] = value.replace('$$', '$')
     return values
 
@@ -64,6 +70,19 @@ def loopback_url(url):
     return parts.scheme in ('http', 'https') and not parts.username and host in ('127.0.0.1', 'localhost', '::1')
 
 
+def local_urls(key, value):
+    """True when every runtime URL is on loopback (single URL) or on loopback/private-network literals (the URL list, entries URL or URL|TOKEN_FILE)."""
+    if not key.endswith('_RUNTIME_URLS'):
+        return loopback_url(value)
+    from urllib.parse import urlsplit
+    from .backends import private_host
+    try:
+        return all(urlsplit(e.partition('|')[0].strip()).scheme in ('http', 'https') and private_host(urlsplit(e.partition('|')[0].strip()).hostname or '')
+                   for e in value.split(',') if e.strip())
+    except ValueError:
+        return False
+
+
 def miner_running(home):
     rc, out, _ = compose(home, 'ps', '--format', 'json', 'miner')
     containers = _containers(out) if rc == 0 else None
@@ -73,6 +92,10 @@ def miner_running(home):
 def missing_entrypoint(rc, err):
     text = err.lower()
     return rc in (126, 127) and ('executable file not found' in text or 'no such file or directory' in text or ENTRYPOINT in text)
+
+
+def backend_lines(report):
+    return [{'url': b.get('url'), **summarize(b)} for b in report.get('backends', []) if isinstance(b, dict)]
 
 
 def summarize(report):
@@ -106,15 +129,17 @@ def selfcheck(args, home=None, config=None, start=None):
     if failure:
         failure.command = 'selfcheck'
         return failure
-    state = runtime_state(home)
+    backends = config.get('backends') or []
+    names = fanout.services(config)
+    state = runtime_state(home, names)
     if start is None:
         start = not getattr(args, 'no_start', False)
     if state == 'stopped' and start:
-        # Only the sidecar: the miner service needs a registered hotkey, the check does not.
-        rc, _, err = compose(home, 'up', '-d', '--no-deps', 'runtime', timeout=300)
+        # Only the sidecars: the miner service needs a registered hotkey, the check does not.
+        rc, _, err = compose(home, 'up', '-d', '--no-deps', *names, timeout=300)
         if rc:
             return Result('selfcheck', 'error', 'Starting the runtime sidecar failed.', data={'detail': io.detail(err)}, exit_code=13)
-        state = runtime_state(home)
+        state = runtime_state(home, names)
     if state != 'healthy':
         message = {'starting': 'The runtime sidecar is starting (hashing weights and loading the model can take up to 10 minutes); rerun reaxctl selfcheck once it is healthy.',
                    'stopped': 'The runtime sidecar is not running; run reaxctl selfcheck without --no-start to start it.'}
@@ -128,8 +153,11 @@ def selfcheck(args, home=None, config=None, start=None):
     token = home / 'secrets/runtime-token'
     if not token.is_file() or ':' in str(token):  # docker -v would create a missing source as a root-owned directory
         return Result('selfcheck', 'blocked', 'The runtime token file is missing; rerun install.', exit_code=10)
-    if any(not loopback_url(v) for k, v in env.items() if k.endswith('_RUNTIME_URL')):
-        return Result('selfcheck', 'blocked', 'miner.env names a runtime URL that is not on loopback; rerun install.', exit_code=10)
+    if any(not local_urls(k, v) for k, v in env.items() if k.endswith(('_RUNTIME_URL', '_RUNTIME_URLS'))):
+        return Result('selfcheck', 'blocked', 'miner.env names a runtime URL that is not on loopback or a private network; rerun install.', exit_code=10)
+    backend_tokens = [(fanout.token_target(i), pathlib.Path(b['token_file'])) for i, b in enumerate(backends) if b.get('token_file')]
+    if any(not path.is_file() or ':' in str(path) for _, path in backend_tokens):
+        return Result('selfcheck', 'blocked', 'A backend token file is missing; rerun install.', exit_code=10)
     warnings = []
     if miner_running(home):
         warnings.append('The miner is running: the check shares the GPU with live validator requests and its speed figure is not representative.')
@@ -137,6 +165,8 @@ def selfcheck(args, home=None, config=None, start=None):
     name = 'reax-selfcheck-{}'.format(os.getpid())
     cmd = ['docker', 'run', '--rm', '--name', name, '--network', 'host', '--user', '{}:{}'.format(os.getuid(), os.getgid()), '--cap-drop', 'ALL',
            '--security-opt', 'no-new-privileges:true', '-v', str(token) + ':' + token_target + ':ro']
+    for target, path in backend_tokens:
+        cmd += ['-v', str(path) + ':' + target + ':ro']
     for key in sorted(env):
         cmd += ['-e', key + '=' + env[key]]
     cmd += ['--entrypoint', ENTRYPOINT, image, '--json']
@@ -154,10 +184,17 @@ def selfcheck(args, home=None, config=None, start=None):
     if not isinstance(report, dict) or rc not in (0, 1, 2):
         return Result('selfcheck', 'error', 'The self-check did not return a readable result.', data={'detail': io.detail(err or out), 'exit_code': rc}, exit_code=13 if rc == 13 else 1)
     data = sanitize(home, summarize(report))
+    if 'backends' in report:
+        data['backends'] = sanitize(home, backend_lines(report))
     data.update(untrusted=True, notice=NOTICE)
     if rc == 2:
         return Result('selfcheck', 'blocked', 'The self-check cannot run: {}'.format(data.get('error') or 'see detail'), data=data, exit_code=10,
                       next=[{'command': 'reaxctl logs --lines 200', 'why': 'Inspect the runtime sidecar.'}])
+    if 'backends' in data:
+        verdicts = '; '.join('{}: {}'.format(b.get('url'), ('PASS ' + numbers(b)) if b.get('pass') is True else ('FAIL ' + (numbers(b) if 'answered' in b else str(b.get('error') or 'no result')))) for b in data['backends'])
+        if rc == 0 and report.get('pass') is True:
+            return Result('selfcheck', summary='Reference self-check passed for all {} backends. {}.'.format(len(data['backends']), verdicts), data=data, warnings=warnings)
+        return Result('selfcheck', 'error', 'Reference self-check failed for at least one backend. {}. {}'.format(verdicts, FAIL_FIX), data=data, exit_code=20, warnings=warnings)
     if rc == 0 and report.get('pass') is True:
         return Result('selfcheck', summary='Reference self-check passed: ' + numbers(data) + '.', data=data, warnings=warnings)
     return Result('selfcheck', 'error', 'Reference self-check failed: ' + numbers(data) + '. ' + FAIL_FIX, data=data, exit_code=20, warnings=warnings)

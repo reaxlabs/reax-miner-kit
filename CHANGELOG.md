@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Several runtime backends behind one hotkey (needs miner release 1.2.0rc8 or later; the kit refuses it on older descriptors): `install --gpus 0,1 [--backend-bind IP] [--backend-token-files F,F]` renders one sidecar per GPU (`device_ids`, published as `BIND:8101+10*i`, bridge network so several s1-pro vLLMs do not clash on :8000), writes `REAX_S1_FAST_RUNTIME_URLS` / `REAX_S1_PRO_RUNTIME_URLS` (`URL` or `URL|TOKEN_FILE`) and mounts optional per-backend token files. Only for s1-fast and s1-pro, only loopback/private bind addresses. `selfcheck` starts and checks every sidecar and prints one verdict per backend. `install --no-fanout` returns to one sidecar; without `--gpus` the rendered files are unchanged. New `docs/MULTI-GPU.md`.
+
 - Release descriptor 1.2.0rc3 (reax-subnet commit 6f12faa): capacity scoring v2. Pay inside a pool follows verified throughput (linear, up to a cap far above one machine); the miner image raises the per-caller limits to 16 concurrent / 240 per minute so a probe can measure full speed. `reaxctl update check` / `update apply` moves an installed miner to the new images.
 
 - Merged the tiered-pools kit branch into the 1.2.0rc1 descriptor: `releases/current.json` now enables four pools (s1-fast, s1-pro, s1-lite, s1-cpu). s1-lite (Plumb-4B GGUF, 8 GB NVIDIA GPU or Jetson Orin, manifest `8c7297e14e5e89bf`) and s1-cpu (Gutsy 0.8B GGUF, no GPU, manifest `f2c9981f0766f2a6`) are `enabled_at_launch` and no longer `dev_only`; the `dev_only` mechanism stays for future pools. Images `reax-s1-lite-runtime`, `reax-s1-lite-runtime-jetson`, `reax-s1-cpu-runtime` carry `sha256:TBD-*` placeholders (now six in total).

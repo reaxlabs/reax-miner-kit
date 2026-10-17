@@ -57,8 +57,8 @@ Read [AGENTS.md](AGENTS.md), then use `./reaxctl spec --json`, `./reaxctl agent-
 | --- | --- |
 | `doctor [--pool P] [--probe-ip] [--check-hf]` | Read-only host requirements (s1-pro: VRAM, unmeasured cards, confidential-compute mode, HF token); optional explicit network probes |
 | `plan --mode M --pool P` | Ordered setup steps, costs, owners and availability blocks |
-| `install --mode M --pool P [--cc-fix]` | Prepare pinned tools, source or images and weights (`--cc-fix`: s1-pro on confidential-compute GPUs) |
-| `selfcheck [--no-start]` | Testnet/mainnet: run the release's reference decisions through the runtime sidecar before registering (no wallet or chain needed) |
+| `install --mode M --pool P [--cc-fix] [--gpus 0,1 [--backend-bind IP] [--backend-token-files F,F]] [--no-fanout]` | Prepare pinned tools, source or images and weights (`--cc-fix`: s1-pro on confidential-compute GPUs; `--gpus`: one runtime sidecar per GPU behind one hotkey, **needs miner release 1.2.0rc8 or later**, see [docs/MULTI-GPU.md](docs/MULTI-GPU.md)) |
+| `selfcheck [--no-start]` | Testnet/mainnet: run the release's reference decisions through the runtime sidecar before registering (no wallet or chain needed); with several backends one verdict per backend |
 | `wallet hotkey` | Create only a hotkey; never show its phrase |
 | `wallet coldkeypub --ss58 ADDRESS` | Import a public coldkey address |
 | `wallet status` | Public addresses, file permissions and rehearsal wallet location |
@@ -101,6 +101,10 @@ The same release also describes two smaller pools: **s1-lite** (8 GB+ NVIDIA GPU
 ```
 
 The runtime sidecar listens on loopback port 8102 only; never publish it. Service templates for running the s1-pro runtime and miner without `reaxctl run` are in [service/](service/); the full walk-through is [docs/S1-PRO.md](docs/S1-PRO.md). The commitment is `reax-s1/1:s1-pro:5b11440bf57b5434`.
+
+## Several GPUs behind one hotkey
+
+Needs miner release 1.2.0rc8 or later (mechanism v2); the kit refuses `--gpus` on older descriptors. `reaxctl install --pool s1-pro --mode mainnet --confirm-mainnet --gpus 0,1` renders one runtime sidecar per GPU and lists them in `REAX_S1_PRO_RUNTIME_URLS`; `selfcheck` prints one verdict per backend. Without `--gpus` nothing changes. Details and a 2-GPU example: [docs/MULTI-GPU.md](docs/MULTI-GPU.md).
 
 ## Competitions
 

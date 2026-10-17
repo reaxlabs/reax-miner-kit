@@ -35,6 +35,7 @@ Tests use fakes and temporary directories; do not introduce real wallet, Docker,
 - `descriptor.py`, `state.py`: validated release data and atomic state storage.
 - `cmd_info.py`, `cmd_doctor.py`, `sysprobe.py`: contract, network rules and read-only diagnosis/plan.
 - `cmd_wallet.py`, `ss58.py`: hotkey-only wallet operations and public addresses.
+- `backends.py`: several runtime sidecars (one per GPU) behind one hotkey: validation, ports, URL list.
 - `cmd_install.py`, `cmd_runtime.py`, `localnet_ops.py`: installation, runtime and disposable rehearsal.
 - `cmd_service.py`, `cmd_update.py`, `service/`: service templates and gated updates.
 - `releases/`: descriptor and release checklist; `docs/`: implementation notes.
