@@ -56,9 +56,11 @@ gated,size_gb}, manifest_id, commitment, gpu{min_vram_gb,max_vram_gb,count,vendo
   `--check-hf`; the token is never output). Placeholder image digests (`sha256:TBD-*`) are reported in `data.placeholder_digests`. `data.eligible_pools[]` with reasons (VRAM vs `min_vram_gb`/`max_vram_gb`), `data.rehearsal_possible`, `data.blockers[]`
   each with a concrete `fix`. Pure read-only.
 - `plan [--pool P] [--mode M]` — ordered steps with `who: agent|human`, `cost`, `reversible`, `command`. Dry run.
-- `install [--pool s1-fast] [--mode localnet|testnet|mainnet] [--cc-fix] [--yes]` — creates `$REAX_HOME`, tool venv, runtime token, renders
+- `install [--pool s1-fast] [--mode localnet|testnet|mainnet] [--cc-fix] [--gpus 0,1 [--backend-bind IP] [--backend-token-files F,F]] [--no-fanout] [--yes]` — creates `$REAX_HOME`, tool venv, runtime token, renders
   `compose.yml`+`miner.env`, pulls images by digest (docker) or prepares the no-docker rehearsal from `source`, downloads the pinned
-  weights (docker modes only) with a size/disk preflight. Resumable.
+  weights (docker modes only) with a size/disk preflight. Resumable. `--gpus` (s1-fast/s1-pro, testnet/mainnet, descriptor release
+  1.2.0rc8 or later, otherwise blocked with exit 12) renders one sidecar per GPU published only on loopback or a private-network
+  address and lists them in `REAX_<MODEL>_RUNTIME_URLS`; see docs/MULTI-GPU.md. Without it the single-sidecar output is unchanged.
 - `selfcheck [--no-start]` — testnet/mainnet only: starts the runtime sidecar alone if it is stopped, then runs the release's
   `reax-selfcheck` (640 reference decisions, scored with the validator's release constants) in the installed miner image with only
   the runtime token mounted and the miner's model/sidecar settings. No wallet, chain or registration needed. Exit 0 pass, 20 fail

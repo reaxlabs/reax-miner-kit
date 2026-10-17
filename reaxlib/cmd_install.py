@@ -223,8 +223,12 @@ def render(home, d, config, source=None):
     import re
     if any(not re.fullmatch(r'[A-Za-z0-9_.-]+', str(x)) or x in ('.', '..') for x in (config.get('wallet_name', 'reax'), hotkey)):
         raise ValueError('Wallet and hotkey names must be single safe path components')
+    from . import backends as fanout
+    backends = config.get('backends') or []
+    if backends and (pool['id'] not in fanout.POOLS or on_jetson):
+        raise ValueError('Several backends are only supported for s1-fast and s1-pro on discrete NVIDIA GPUs')
     port = config.get('miner_port', 8091)
-    if type(port) is not int or not 1024 <= port <= 65535 or port in SIDECAR_PORTS:
+    if type(port) is not int or not 1024 <= port <= 65535 or port in SIDECAR_PORTS or port in fanout.ports(config):
         raise ValueError('miner_port must be an integer 1024–65535 excluding sidecar ports')
     if config.get('external_ip'):
         import ipaddress
@@ -236,34 +240,44 @@ def render(home, d, config, source=None):
         if not valid_ip:
             raise ValueError('external_ip must be a global IPv4 or IPv6 literal')
     services = ['services:']
-    for name, imagekey in [('runtime', key), ('miner', 'miner')]:
+    runtimes = [fanout.service(i) for i in range(len(backends))] or ['runtime']
+    for name, imagekey in [(n, key) for n in runtimes] + [('miner', 'miner')]:
+        backend = backends[runtimes.index(name)] if backends and name != 'miner' else None
+        # Several backends on one host: bridge networking, because every s1-pro sidecar's internal vLLM listens on :8000 of its own network namespace.
+        # Each sidecar is published only on its configured loopback/private address and port.
         services += ['  ' + name + ':', '    image: ' + q(image_ref(d, imagekey)), '    user: ' + q(uid),
-                     '    init: true', '    network_mode: host', '    restart: unless-stopped', '    cap_drop: [ALL]', '    security_opt: ["no-new-privileges:true"]', '    logging:', '      driver: json-file', '      options:', '        max-size: "10m"', '        max-file: "3"']
+                     '    init: true'] + ([] if backend else ['    network_mode: host']) + ['    restart: unless-stopped', '    cap_drop: [ALL]', '    security_opt: ["no-new-privileges:true"]', '    logging:', '      driver: json-file', '      options:', '        max-size: "10m"', '        max-file: "3"']
         if private and source:
             runtime_dir = 'runtimes/s1-gguf' if gguf else 'runtimes/' + pool['id']
             services += ['    build:', '      context: ' + q(str(source)), '      dockerfile: ' + q('Dockerfile' if name == 'miner' else runtime_dir + ('/Dockerfile.jetson' if on_jetson else '/Dockerfile'))]
-        if name == 'runtime':
+        if name != 'miner':
             runtime_env = ['      ' + k + ': ' + q(v) for k, v in sorted(pool_runtime_env(pool, config).items())]
             ccfix = ['      - ' + q(config['ccfix_dir'] + ':' + CCFIX_MOUNT + ':ro')] if pool_ccfix(pool, config) else []
             host_var, port_var = ('RUNTIME_HOST', 'RUNTIME_PORT') if pool['id'] == 's1-fast' or gguf else ('RUNE_HOST', 'RUNE_PORT')
             if on_jetson:
                 services += ['    runtime: nvidia']  # Jetson exposes its integrated GPU through the nvidia runtime, not a device reservation
+            if backend:
+                bind = '[{}]'.format(backend['bind']) if ':' in backend['bind'] else backend['bind']
+                services += ['    ports:', '      - ' + q('{}:{}:{}'.format(bind, backend['port'], pool['sidecar_port']))]
             services += ['    environment:', '      S1M_INTERNAL_TOKEN_FILE: /run/runtime-token',
-                         '      ' + host_var + ': 127.0.0.1',
+                         '      ' + host_var + ': ' + ('0.0.0.0' if backend else '127.0.0.1'),
                          '      ' + port_var + ': ' + q(str(pool['sidecar_port']))]
             if gguf:
                 services += ['      GGUF_MODEL_DIR: /model', '      GGUF_N_GPU_LAYERS: ' + q('-1' if nvidia else '0')]
             services += runtime_env
-            services += ['    volumes:', '      - ' + q(token + ':/run/runtime-token:ro'),
+            services += ['    volumes:', '      - ' + q((backend.get('token_file') if backend and backend.get('token_file') else token) + ':/run/runtime-token:ro'),
                          '      - ' + q(str(home / 'weights' / pool['id']) + ':/model:ro')] + ccfix
             if nvidia and not on_jetson:
                 services += ['    deploy:', '      resources:', '        reservations:',
-                             '          devices:', '            - driver: nvidia', '              count: 1', '              capabilities: [gpu]']
+                             '          devices:', '            - driver: nvidia',
+                             '              ' + ('device_ids: [' + q(backend['gpu']) + ']' if backend else 'count: 1'), '              capabilities: [gpu]']
         else:
-            services += ['    env_file: ' + q(str(home / 'miner.env')),
-                         '    depends_on:', '      runtime:', '        condition: service_healthy',
-                         '    volumes:', '      - ' + q(token + ':/run/runtime-token:ro'),
-                         '      - ' + q(str(wallet / 'hotkeys' / hotkey) + ':/wallets/' + config.get('wallet_name', 'reax') + '/hotkeys/' + hotkey + ':ro'),
+            services += ['    env_file: ' + q(str(home / 'miner.env')), '    depends_on:']
+            for dependency in runtimes:
+                services += ['      ' + dependency + ':', '        condition: service_healthy']
+            services += ['    volumes:', '      - ' + q(token + ':/run/runtime-token:ro')]
+            services += ['      - ' + q(b['token_file'] + ':' + fanout.token_target(i) + ':ro') for i, b in enumerate(backends) if b.get('token_file')]
+            services += ['      - ' + q(str(wallet / 'hotkeys' / hotkey) + ':/wallets/' + config.get('wallet_name', 'reax') + '/hotkeys/' + hotkey + ':ro'),
                          '      - ' + q(str(wallet / 'coldkeypub.txt') + ':/wallets/' + config.get('wallet_name', 'reax') + '/coldkeypub.txt:ro'),
                          '    ulimits:', '      nofile: {soft: 65536, hard: 65536}']
     from .state import write_text
@@ -272,7 +286,8 @@ def render(home, d, config, source=None):
               'REAX_NETUID': config['netuid'], 'REAX_WALLET_PATH': '/wallets',
               'REAX_WALLET_NAME': config.get('wallet_name', 'reax'), 'REAX_WALLET_HOTKEY': hotkey,
               'REAX_RUNTIME_TOKEN_FILE': '/run/runtime-token', 'REAX_PUBLISH_COMMITMENT': '1',
-              'REAX_' + pool['id'].upper().replace('-', '_') + '_RUNTIME_URL': 'http://127.0.0.1:' + str(pool['sidecar_port']),
+              'REAX_' + pool['id'].upper().replace('-', '_') + ('_RUNTIME_URLS' if backends else '_RUNTIME_URL'):
+                  fanout.urls(backends) if backends else 'http://127.0.0.1:' + str(pool['sidecar_port']),
               'REAX_EXTERNAL_IP': config.get('external_ip', ''), 'REAX_MINER_PORT': config.get('miner_port', 8091),
               'REAX_EXTERNAL_PORT': config.get('miner_port', 8091)}
     if pool.get('tier', 'gpu') != 'gpu' or pool.get('dev_only'):
@@ -287,6 +302,7 @@ def render(home, d, config, source=None):
 
 
 def install(args):
+    from . import backends as fanout
     home = home_of(args)
     d = descriptor(args)
     config = read_config(home)
@@ -306,6 +322,18 @@ def install(args):
         return Result('install', 'error', 'Unknown pool.', exit_code=2)
     if pool.get('dev_only') and mode == 'mainnet':
         return Result('install', 'blocked', 'Pool {} is a development-network pool and cannot be installed on mainnet; use --mode localnet or testnet, or choose a launch pool.'.format(name), exit_code=12)
+    planned = None
+    if getattr(args, 'gpus', None):
+        if not fanout.release_ok(d['release_id']):
+            return Result('install', 'blocked', '--gpus (several runtime backends per hotkey) needs miner release {} or later; this descriptor is {}. Update the kit and release first.'.format(fanout.MIN_RELEASE, d['release_id']), exit_code=12)
+        if mode == 'localnet':
+            return Result('install', 'blocked', '--gpus needs the real model runtime; use --mode testnet or --mode mainnet.', exit_code=10)
+        try:
+            planned = fanout.plan(pool, args.gpus, getattr(args, 'backend_bind', None) or '127.0.0.1', getattr(args, 'backend_token_files', None))
+        except ValueError as error:
+            return Result('install', 'error', str(error), exit_code=2)
+    if (planned or (not getattr(args, 'no_fanout', False) and config.get('backends'))) and not fanout.release_ok(d['release_id']):
+        return Result('install', 'blocked', 'This installation has several backends configured, which need miner release ' + fanout.MIN_RELEASE + ' or later; pass --no-fanout or update the release.', exit_code=12)
     if 'manifest_id' in config and config['manifest_id'] != pool['manifest_id'] and not getattr(args, 'accept_manifest_change', False):
         return human('install', 'Approve the manifest change.', 'A changed manifest resets the miner score.', ['Review and repeat with --accept-manifest-change.'])
     if mode != 'localnet' and not pool.get('enabled_at_launch', False) and not (pool.get('dev_only') and mode == 'testnet'):
@@ -338,6 +366,10 @@ def install(args):
             return failure
         mark(home, 'source', {'path': str(source), 'ref': d['source']['ref']})
     config.update(mode=mode, pool=name, release_id=d['release_id'], manifest_id=pool['manifest_id'])
+    if getattr(args, 'no_fanout', False) or pool['id'] not in fanout.POOLS:
+        config.pop('backends', None)
+    if planned:
+        config['backends'] = planned
     if getattr(args, 'cc_fix', False):
         if not (pool.get('runtime') or {}).get('cc_fix_env'):
             return Result('install', 'blocked', '--cc-fix only applies to a pool whose descriptor defines it (s1-pro).', exit_code=12)
@@ -407,5 +439,9 @@ def register(sub):
     p.add_argument('--pool', default=None)
     p.add_argument('--accept-manifest-change', action='store_true')
     p.add_argument('--cc-fix', action='store_true', help='s1-pro on confidential-compute GPUs: mount the UVA fix (needs a reviewed subnet checkout)')
+    p.add_argument('--gpus', default=None, help='one runtime sidecar per listed GPU index, all behind one hotkey, e.g. 0,1 (needs miner release 1.2.0rc8 or later; s1-fast and s1-pro)')
+    p.add_argument('--backend-bind', default=None, help='address the sidecars are published on (default 127.0.0.1; a private-network IP lets a miner on another machine reach them)')
+    p.add_argument('--backend-token-files', default=None, help='comma list of one 0600 token file per GPU (default: the shared runtime token)')
+    p.add_argument('--no-fanout', action='store_true', help='go back to a single runtime sidecar')
     p.add_argument('--confirm-mainnet', action='store_true')
     p.set_defaults(func=install)
