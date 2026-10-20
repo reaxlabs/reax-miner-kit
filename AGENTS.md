@@ -41,7 +41,7 @@ Tests use fakes and temporary directories; do not introduce real wallet, Docker,
 - `tests/`: offline unit tests and host fixtures; `.github/workflows/ci.yml`: compatibility checks.
 
 
-## Kit 0.1.5 rules
+## Kit 0.1.6 rules
 
 - `--confirm-mainnet`, `--accept-manifest-change` and `--yes` are agent-typable policy gates, not proof of human approval. The real money gate is human signing registration in their own wallet. Never add acceptance flags to unattended timers.
 - Doctor/plan/install/register/start/update refresh the validated descriptor with a one-hour cache. Use `--offline` or `REAX_OFFLINE=1` for offline work; fallback warnings must be reported.

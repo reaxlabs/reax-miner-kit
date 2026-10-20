@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.6
+
+- Release descriptor 1.2.0rc9.post6 (reax-subnet commit d5d551e): new image digests for the miner and all five runtimes. The miner image defaults to 32 concurrent / 456 per minute per caller (was 16 / 240 in 1.2.0rc3); the limits grow further when the miner serves several backends. `reaxctl update check` / `update apply` moves an installed miner to the new images.
+
 - Release descriptor 1.2.0rc3 (reax-subnet commit 6f12faa): capacity scoring v2. Pay inside a pool follows verified throughput (linear, up to a cap far above one machine); the miner image raises the per-caller limits to 16 concurrent / 240 per minute so a probe can measure full speed. `reaxctl update check` / `update apply` moves an installed miner to the new images.
 
 - Merged the tiered-pools kit branch into the 1.2.0rc1 descriptor: `releases/current.json` now enables four pools (s1-fast, s1-pro, s1-lite, s1-cpu). s1-lite (Plumb-4B GGUF, 8 GB NVIDIA GPU or Jetson Orin, manifest `8c7297e14e5e89bf`) and s1-cpu (Gutsy 0.8B GGUF, no GPU, manifest `f2c9981f0766f2a6`) are `enabled_at_launch` and no longer `dev_only`; the `dev_only` mechanism stays for future pools. Images `reax-s1-lite-runtime`, `reax-s1-lite-runtime-jetson`, `reax-s1-cpu-runtime` carry `sha256:TBD-*` placeholders (now six in total).
