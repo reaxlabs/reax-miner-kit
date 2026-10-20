@@ -1,7 +1,7 @@
 {
   "schema": "reax-release/1",
-  "release_id": "1.2.0rc3",
-  "updated": "2026-10-15",
+  "release_id": "1.2.0rc9.post6",
+  "updated": "2026-10-21",
   "status": {
     "launch_status": "registered_starting_soon",
     "live": false,
@@ -18,23 +18,23 @@
     "s1_lite_runtime": "ghcr.io/reaxlabs/reax-s1-lite-runtime",
     "s1_lite_runtime_jetson": "ghcr.io/reaxlabs/reax-s1-lite-runtime-jetson",
     "s1_cpu_runtime": "ghcr.io/reaxlabs/reax-s1-cpu-runtime",
-    "tag": "1.2.0-rc3",
+    "tag": "1.2.0-rc9.post6",
     "digests": {
-      "miner": "sha256:2ebe3d92e81c20fcb39990950cecccb2d018e468fb173d8d71c6598db37dcb4b",
-      "s1_fast_runtime": "sha256:e8aea0ea2172f28bc462660710e8f70459ab7f324b2af3ff5f25b0345bf88969",
-      "s1_pro_runtime": "sha256:6d564ebfeed1226fe9b9d6d3906881d52dd15a112714b7430aebfc9f5a47058c",
-      "s1_lite_runtime": "sha256:d96e77732d6fcaa36f0ae86917fbf36b00b0e3636baa560e6a799d2b95af3ad2",
-      "s1_lite_runtime_jetson": "sha256:e04f4ea5bc5a6b6eb6321784a394eff34b047ea86ee275bfdda3148ff1f2e0ce",
-      "s1_cpu_runtime": "sha256:cade8c734289724a8309e9c6bdfc77ccb05fac77070115f58b2673e08c438875"
+      "miner": "sha256:c31636eeb9dd775e3ae1219b94dd75bfb2c85536305cd23b91f2d43a233a9d8e",
+      "s1_fast_runtime": "sha256:6cecf56062263d867fd27ab160c9a0558daf8511cc714f0d7d2108881918f11d",
+      "s1_pro_runtime": "sha256:26b722eb23c83f7e312f71e99186d0e947d8f13cc414084cb46624835f6fd6b8",
+      "s1_lite_runtime": "sha256:eae19503487b6a322f41ba81669299e5eb787a5e57058ed3306f4a8adafac441",
+      "s1_lite_runtime_jetson": "sha256:bd2c813b190bec46cd57e3f9103c96c8ccefa5de610a54c51c9daf584bdafcb2",
+      "s1_cpu_runtime": "sha256:3e792355f528da17927d583567371fe1013072d2accf75b07e097f690649a0ee"
     },
     "public": true,
-    "note": "Published by reaxlabs/reax-subnet docker.yml. miner, s1_fast_runtime, s1_pro_runtime and s1_cpu_runtime from commit 6f12faa (release 1.2.0rc3, capacity scoring v2; the miner image raises the per-caller limits to 16 concurrent / 240 per minute). s1_lite_runtime and s1_lite_runtime_jetson are unchanged from 1.2.0rc1 (commit 020429e). s1_cpu_runtime is a multi-arch index (linux/amd64 + linux/arm64); s1_lite_runtime_jetson is the linux/arm64 JetPack build (not yet tested on Jetson hardware)."
+    "note": "Published by reaxlabs/reax-subnet docker.yml publish run on commit d5d551e (release 1.2.0rc9.post6). The miner image defaults to 32 concurrent / 456 per minute per caller. s1_cpu_runtime is a multi-arch index (linux/amd64 + linux/arm64); s1_lite_runtime_jetson is the linux/arm64 JetPack build (not yet tested on Jetson hardware)."
   },
   "source": {
     "git": "https://github.com/reaxlabs/reax-subnet",
-    "ref": "6f12faac558ea8aa629c23cc01a92b5ccb3acb4e",
+    "ref": "d5d551e853602e2088fbe0e024787a618ec45682",
     "public": true,
-    "commit": "6f12faac558ea8aa629c23cc01a92b5ccb3acb4e"
+    "commit": "d5d551e853602e2088fbe0e024787a618ec45682"
   },
   "pools": [
     {
