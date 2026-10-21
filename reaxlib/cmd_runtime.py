@@ -152,9 +152,14 @@ def verify(args, home, config):
     item('processes', data.get('running'), 'Run reaxctl localnet up and inspect reaxctl logs.' if localnet else 'Run reaxctl start and inspect reaxctl logs.')
     item('health', bool(h), 'Check the miner port and runtime logs.')
     item('protocol', h.get('protocol') == 'reax-s1/1', 'Install the pinned release runtime.')
-    item('model', pool and h.get('model') == pool['id'], 'Run the selected pool runtime.')
+    # A miner that serves several models (REAX_MODELS, docs/MULTIMODEL.md) reports {"models": {model: manifest_id}} and no
+    # single model/manifest_id; the installed pool must be one of them with this release's manifest.
+    served = h.get('models') if isinstance(h.get('models'), dict) else None
+    model_ok = pool and (pool['id'] in served if served is not None else h.get('model') == pool['id'])
+    manifest_ok = pool and ((served or {}).get(pool['id']) if served is not None else h.get('manifest_id')) == pool['manifest_id']
+    item('model', model_ok, 'Run the selected pool runtime.')
     item('version', h.get('version') == config.get('release_id'), 'Restart with the installed pinned release.')
-    item('manifest', pool and h.get('manifest_id') == pool['manifest_id'], 'Use the selected pool and pinned weights/runtime.')
+    item('manifest', manifest_ok, 'Use the selected pool and pinned weights/runtime.')
     item('registration', data.get('registered') is True, 'Complete hotkey registration on the installed network.')
     item('commitment', data.get('commitment_published') is True, 'Wait for commitment publication; inspect logs for chain errors.')
     item('validator rounds', data.get('validator_rounds_seen'), 'Rehearsal rounds run every 10 seconds; rerun reaxctl verify in a minute, then inspect reaxctl logs.' if localnet else 'Wait for a validator round and inspect logs.')

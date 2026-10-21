@@ -1,6 +1,6 @@
 {
   "schema": "reax-release/1",
-  "release_id": "1.2.0rc9.post6",
+  "release_id": "1.2.0rc10.post1",
   "updated": "2026-10-21",
   "status": {
     "launch_status": "live",
@@ -34,23 +34,23 @@
     "s1_lite_runtime": "ghcr.io/reaxlabs/reax-s1-lite-runtime",
     "s1_lite_runtime_jetson": "ghcr.io/reaxlabs/reax-s1-lite-runtime-jetson",
     "s1_cpu_runtime": "ghcr.io/reaxlabs/reax-s1-cpu-runtime",
-    "tag": "1.2.0-rc9.post6",
+    "tag": "1.2.0-rc10.post1",
     "digests": {
-      "miner": "sha256:c31636eeb9dd775e3ae1219b94dd75bfb2c85536305cd23b91f2d43a233a9d8e",
-      "s1_fast_runtime": "sha256:6cecf56062263d867fd27ab160c9a0558daf8511cc714f0d7d2108881918f11d",
-      "s1_pro_runtime": "sha256:26b722eb23c83f7e312f71e99186d0e947d8f13cc414084cb46624835f6fd6b8",
-      "s1_lite_runtime": "sha256:eae19503487b6a322f41ba81669299e5eb787a5e57058ed3306f4a8adafac441",
-      "s1_lite_runtime_jetson": "sha256:bd2c813b190bec46cd57e3f9103c96c8ccefa5de610a54c51c9daf584bdafcb2",
-      "s1_cpu_runtime": "sha256:3e792355f528da17927d583567371fe1013072d2accf75b07e097f690649a0ee"
+      "miner": "sha256:a3043b3228eb1608b595d201ce9d265bcf2b12fe988420b08395e4f0dd4f59ad",
+      "s1_fast_runtime": "sha256:4b2ec38e1d3b22fa91bb91a1210de0ceb70c928338afe9e8a627de331d27a4d9",
+      "s1_pro_runtime": "sha256:6f578cc235e0cca492f8340e97d05fb60d50a96101ce69ba57ef0fa7493cecc0",
+      "s1_lite_runtime": "sha256:ffa03540fe9d1df00a68525dc98c8c1da5cb962d7f91987e36ff10f3bb6b886f",
+      "s1_lite_runtime_jetson": "sha256:c097ccbb27f63d3411f8b3bb7133d395935c2b981c2211c14bebacebea6667e4",
+      "s1_cpu_runtime": "sha256:7d8bc7feb2e0e317ab8b06fe74f8cbd4abdeae2e069b74f11bf82908051f7687"
     },
     "public": true,
-    "note": "Published by reaxlabs/reax-subnet docker.yml publish run on commit d5d551e (release 1.2.0rc9.post6). The miner image defaults to 32 concurrent / 456 per minute per caller. s1_cpu_runtime is a multi-arch index (linux/amd64 + linux/arm64); s1_lite_runtime_jetson is the linux/arm64 JetPack build (not yet tested on Jetson hardware)."
+    "note": "Published by reaxlabs/reax-subnet docker.yml on commit f61fe79 (release 1.2.0rc10.post1, tag v1.2.0-rc10.post1). The miner image defaults to 32 concurrent / 456 per minute per caller and serves several models on one hotkey from block 9331987 (REAX_MODELS). s1_cpu_runtime is a multi-arch index (linux/amd64 + linux/arm64); s1_lite_runtime_jetson is the linux/arm64 JetPack build (not yet tested on Jetson hardware)."
   },
   "source": {
     "git": "https://github.com/reaxlabs/reax-subnet",
-    "ref": "d5d551e853602e2088fbe0e024787a618ec45682",
+    "ref": "f61fe7961d323c9f2b4d2b4ee26508c605e52e0d",
     "public": true,
-    "commit": "d5d551e853602e2088fbe0e024787a618ec45682"
+    "commit": "f61fe7961d323c9f2b4d2b4ee26508c605e52e0d"
   },
   "pools": [
     {

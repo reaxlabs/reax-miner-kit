@@ -47,6 +47,23 @@ class RuntimeTest(unittest.TestCase):
             rc, r = self.call('verify')
         self.assertEqual(rc, 20)
         self.assertTrue(any(not i['pass'] and i['fix'] for i in r['data']['checklist']))
+    def verify_items(self, health):
+        with patch.object(localnet_ops, 'health', return_value=health):
+            rc, r = self.call('verify')
+        return {i['item']: i['pass'] for i in r['data']['checklist']}
+    def test_verify_accepts_single_model_health(self):
+        items = self.verify_items({'protocol': 'reax-s1/1', 'model': 's1-fast', 'manifest_id': 'ff6e01b983d48024', 'models': {'s1-fast': 'ff6e01b983d48024'}})
+        self.assertTrue(items['model'] and items['manifest'] and items['protocol'])
+    def test_verify_accepts_multi_model_health(self):
+        # several models on one hotkey: /health has "models" and no single model / manifest_id
+        items = self.verify_items({'protocol': 'reax-s1/1', 'models': {'s1-fast': 'ff6e01b983d48024', 's1-lite': '8c7297e14e5e89bf'}})
+        self.assertTrue(items['model'] and items['manifest'] and items['protocol'])
+    def test_verify_multi_model_health_needs_the_installed_pool_and_its_manifest(self):
+        missing = self.verify_items({'protocol': 'reax-s1/1', 'models': {'s1-pro': '5b11440bf57b5434', 's1-lite': '8c7297e14e5e89bf'}})
+        self.assertFalse(missing['model'] or missing['manifest'])
+        stale = self.verify_items({'protocol': 'reax-s1/1', 'models': {'s1-fast': '0000000000000000', 's1-lite': '8c7297e14e5e89bf'}})
+        self.assertTrue(stale['model'])
+        self.assertFalse(stale['manifest'])
     def test_localnet_verify_explains_round_wait(self):
         cmd_install.write_config(self.home, {'mode':'localnet', 'pool':'s1-fast', 'release_id':'1.1.0rc2'})
         with patch.object(localnet_ops, 'processes', return_value={}), patch.object(localnet_ops, 'health', return_value=None):
