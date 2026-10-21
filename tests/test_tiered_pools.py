@@ -11,7 +11,7 @@ from reaxlib import cmd_install as install, descriptor, sysprobe
 from reaxlib.cmd_doctor import diagnose
 
 BUNDLED = json.loads(descriptor.BUNDLED.read_text())
-LAUNCH = copy.deepcopy(BUNDLED)  # the bundled 1.2.0rc9.post6 descriptor: all four pools enabled
+LAUNCH = copy.deepcopy(BUNDLED)  # the bundled 1.2.0rc10.post1 descriptor: all four pools enabled
 for _pool in BUNDLED['pools']:  # the tests below exercise the development-pool rules, so mark lite/cpu as dev-only in their working copy
     if _pool['id'] in ('s1-lite', 's1-cpu'):
         _pool.update(enabled_at_launch=False, dev_only=True)
@@ -68,14 +68,14 @@ class DescriptorFieldTests(unittest.TestCase):
             self.assertNotIn('dev_only', pool)
         self.assertEqual(by_id['s1-lite']['commitment'], 'reax-s1/1:s1-lite:8c7297e14e5e89bf')
         self.assertEqual(by_id['s1-cpu']['commitment'], 'reax-s1/1:s1-cpu:f2c9981f0766f2a6')
-        self.assertEqual(LAUNCH['images']['tag'], '1.2.0-rc9.post6')
+        self.assertEqual(LAUNCH['images']['tag'], '1.2.0-rc10.post1')
         self.assertEqual(descriptor.placeholder_digests(LAUNCH), [])
         self.assertTrue(LAUNCH['images']['public'])
         self.assertEqual(sorted(LAUNCH['images']['digests']), ['miner', 's1_cpu_runtime', 's1_fast_runtime', 's1_lite_runtime', 's1_lite_runtime_jetson', 's1_pro_runtime'])
         for key, digest in LAUNCH['images']['digests'].items():
             self.assertRegex(digest, r'^sha256:[0-9a-f]{64}$', key)
         self.assertTrue(LAUNCH['source']['public'])
-        self.assertEqual(LAUNCH['source']['commit'], 'd5d551e853602e2088fbe0e024787a618ec45682')
+        self.assertEqual(LAUNCH['source']['commit'], 'f61fe7961d323c9f2b4d2b4ee26508c605e52e0d')
 
     def test_bundled_has_both_new_pools_disabled_and_dev_only(self):
         descriptor.validate(copy.deepcopy(BUNDLED))
