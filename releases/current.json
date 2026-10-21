@@ -44,7 +44,8 @@
       "s1_cpu_runtime": "sha256:3e792355f528da17927d583567371fe1013072d2accf75b07e097f690649a0ee"
     },
     "public": true,
-    "note": "STAGING"
+    "note": "STAGING",
+    "reax_1_runtime": "ghcr.io/reaxlabs/reax-reax-1-runtime"
   },
   "source": {
     "git": "https://github.com/reaxlabs/reax-subnet",
@@ -181,6 +182,37 @@
       "jetson": false,
       "min_ram_gb": 4,
       "min_cpu_cores": 4
+    },
+    {
+      "id": "reax-1",
+      "model": "REAX 1 (27B joint decision model, reax-1)",
+      "weights": {
+        "repo": "decisionmodels/reax-1",
+        "revision": "ca2a0cc54a537c1f5cf24e5b09387cfb357b6518",
+        "gated": false,
+        "size_gb": 52,
+        "format": "bf16 safetensors (FP8 at serving time is the runtime image's choice)"
+      },
+      "manifest_id": "8aa60240936239f9",
+      "manifest_id_note": "TODO(release owner): provisional. manifest_id changes when runtime.base_image / engine / dtype in src/reax_subnet/manifests/reax-1-v1.json are pinned; copy the final id here and into the commitment below.",
+      "commitment": "reax-s1/1:reax-1:8aa60240936239f9",
+      "gpu": {
+        "min_vram_gb": 48,
+        "count": 1,
+        "vendor": "NVIDIA",
+        "measured": [],
+        "unmeasured_note": "PLANNED, not active. Nothing is measured yet; expected: RTX PRO 6000 (96 GB), H100 80GB, L40S 48GB, RTX A6000 48GB (FP8 ~28 GB + KV cache).",
+        "unmeasured": [
+          "RTX PRO 6000",
+          "H100",
+          "L40S",
+          "A6000"
+        ]
+      },
+      "sidecar_port": 8105,
+      "enabled_at_launch": false,
+      "planned": true,
+      "runtime_image_note": "TODO(release owner): build and pin reax_1_runtime (listed under images, no digest yet: a sha256:TBD-* placeholder is refused in a live descriptor). The image serves the same sidecar protocol as s1-fast on RUNTIME_HOST / RUNTIME_PORT."
     }
   ],
   "requirements": {
@@ -190,7 +222,8 @@
       "s1-fast": 20,
       "s1-pro": 80,
       "s1-lite": 8,
-      "s1-cpu": 3
+      "s1-cpu": 3,
+      "reax-1": 60
     },
     "driver_min": "R580 (CUDA 13)",
     "python_min": "3.10",
@@ -202,6 +235,7 @@
       8102,
       8103,
       8104,
+      8105,
       8000
     ],
     "os": "Linux x86_64 (also WSL2 with NVIDIA GPU passthrough)",

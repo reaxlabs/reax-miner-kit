@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- reax-1 (planned, not active): descriptor pool `reax-1` (`decisionmodels/reax-1@ca2a0cc5`, >= 48 GB, sidecar port 8105,
+  `enabled_at_launch: false`, `planned: true`; mainnet install refuses it, doctor lists it as not eligible), image key
+  `reax_1_runtime` without a digest (TODO release owner), disk requirement 60 GB, port 8105 in the never-publish list.
+
+## Unreleased
+
 ## 0.1.7
 
 - Release descriptor 1.2.0rc10 (reax-subnet commit 131b107, tag `v1.2.0-rc10`): new image digests for the miner and all five runtimes. Manifests, pool commitments, hardware and the miner defaults (32 concurrent / 456 per minute per caller, 8 in flight) are unchanged; `minimum_release` stays 1.1.0rc2 (the single-model protocol `reax-s1/1` is unchanged). The descriptor `status` block is the live block (live true, from PR #4); the bundled copy in the release tarball now matches it.

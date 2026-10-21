@@ -61,7 +61,7 @@ def with_pool(**changes):
 class DescriptorFieldTests(unittest.TestCase):
     def test_bundled_enables_four_pools_with_subnet_manifests(self):
         descriptor.validate(copy.deepcopy(LAUNCH))
-        by_id = {p['id']: p for p in LAUNCH['pools']}
+        by_id = {p['id']: p for p in LAUNCH['pools'] if not p.get('planned')}  # reax-1 is planned, see test_reax1_pool.py
         self.assertEqual(list(by_id), ['s1-fast', 's1-pro', 's1-lite', 's1-cpu'])
         for pool in by_id.values():
             self.assertTrue(pool['enabled_at_launch'])

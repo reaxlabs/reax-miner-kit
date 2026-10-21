@@ -261,6 +261,8 @@ def diagnose(args, probe=None, host=None, release=None):
                 block('disk_' + pool['id'], reasons[-1], 'Free space in REAX_HOME or select a larger disk; {} GB required.'.format(req['disk_gb'][pool['id']]))
         hardware_ok = not reasons
         fits[pool['id']] = hardware_ok and resources
+        if pool.get('planned'):
+            reasons.append('Planned for a later release; not active yet, so it cannot be mined now.')
         if pool.get('dev_only'):
             if mode == 'mainnet':
                 reasons.append('Development networks only (localnet/testnet); not available on mainnet.')

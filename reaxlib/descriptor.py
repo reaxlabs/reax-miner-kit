@@ -32,8 +32,8 @@ def placeholder_digests(value):
 # A fetched descriptor is unsigned data; it may only point at code and images owned by these GitHub owners (new owners need a new kit release).
 TRUSTED_OWNERS = ('reaxlabs',)
 CORE_IMAGES = ('miner', 's1_fast_runtime', 's1_pro_runtime')
-OPTIONAL_IMAGES = ('s1_lite_runtime', 's1_lite_runtime_jetson', 's1_cpu_runtime')
-POOL_IDS = ('s1-fast', 's1-pro', 's1-lite', 's1-cpu')
+OPTIONAL_IMAGES = ('s1_lite_runtime', 's1_lite_runtime_jetson', 's1_cpu_runtime', 'reax_1_runtime')
+POOL_IDS = ('s1-fast', 's1-pro', 's1-lite', 's1-cpu', 'reax-1')
 
 
 FILE_NAME = re.compile(r'[A-Za-z0-9_][A-Za-z0-9_.-]*')

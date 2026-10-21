@@ -197,7 +197,7 @@ def image_ref(d, key):
     return images[key] + ':' + (images.get('tag') or d['release_id'])
 
 
-SIDECAR_PORTS = (8101, 8102, 8103, 8104, 8000)
+SIDECAR_PORTS = (8101, 8102, 8103, 8104, 8105, 8000)
 GGUF_POOLS = ('s1-lite', 's1-cpu')
 
 
@@ -245,7 +245,7 @@ def render(home, d, config, source=None):
         if name == 'runtime':
             runtime_env = ['      ' + k + ': ' + q(v) for k, v in sorted(pool_runtime_env(pool, config).items())]
             ccfix = ['      - ' + q(config['ccfix_dir'] + ':' + CCFIX_MOUNT + ':ro')] if pool_ccfix(pool, config) else []
-            host_var, port_var = ('RUNTIME_HOST', 'RUNTIME_PORT') if pool['id'] == 's1-fast' or gguf else ('RUNE_HOST', 'RUNE_PORT')
+            host_var, port_var = ('RUNTIME_HOST', 'RUNTIME_PORT') if pool['id'] in ('s1-fast', 'reax-1') or gguf else ('RUNE_HOST', 'RUNE_PORT')
             if on_jetson:
                 services += ['    runtime: nvidia']  # Jetson exposes its integrated GPU through the nvidia runtime, not a device reservation
             services += ['    environment:', '      S1M_INTERNAL_TOKEN_FILE: /run/runtime-token',

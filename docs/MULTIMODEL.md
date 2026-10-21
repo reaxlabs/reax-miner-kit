@@ -24,17 +24,18 @@ the pool you installed.
 | s1-pro | `s1_pro_runtime` | 8102 | `REAX_S1_PRO_RUNTIME_URL=http://127.0.0.1:8102` |
 | s1-lite | `s1_lite_runtime` (`s1_lite_runtime_jetson` on a Jetson) | 8103 | `REAX_S1_LITE_RUNTIME_URL=http://127.0.0.1:8103` |
 | s1-cpu | `s1_cpu_runtime` | 8104 | `REAX_S1_CPU_RUNTIME_URL=http://127.0.0.1:8104` |
+| reax-1 (planned, not active) | `reax_1_runtime` (digest TODO) | 8105 | `REAX_REAX_1_RUNTIME_URL=http://127.0.0.1:8105` |
 
 * `REAX_MODELS=s1-lite,s1-cpu` (comma-separated, each model at most once, at least two; the first is the primary model). Leave
   `REAX_MODEL` unset: if you set it, it must be in the list.
 * Every model has its **own sidecar**, own port and own weights directory, with the **same** `REAX_RUNTIME_TOKEN_FILE` token. Two
   models must not share a URL. Hardware is per model: the sidecars together must fit the machine (you save registrations, not
-  hardware). Never publish the sidecar ports 8101-8104 or 8000.
+  hardware). Never publish the sidecar ports 8101-8105 or 8000.
 * Limits (`REAX_MAX_CONCURRENT`, `REAX_PER_CALLER_CONCURRENCY`, `REAX_PER_CALLER_PER_MINUTE`) apply **per model**, with the
   image defaults 8 / 32 / 456.
 * `GET /health` on the miner port returns `{"protocol": "reax-s1/1", "version": ..., "models": {"<model>": "<manifest_id>", ...}}`.
 * The miner publishes `reax-s1m/1:<model>:<manifest_id>,<model>:<manifest_id>` on start (canonical order s1-fast, s1-pro,
-  s1-lite, s1-cpu); the manifest ids are the `manifest_id` values of the pools in `releases/current.json`. A competition
+  s1-lite, s1-cpu, reax-1; at most four models fit the 128-byte field); the manifest ids are the `manifest_id` values of the pools in `releases/current.json`. A competition
   element already on the hotkey is kept.
 * **Before block 9331987** the miner refuses to start with two or more models (it exits with `refusing to start: ... count from
   block 9331987`; with `restart: unless-stopped` it keeps restarting). Start it after the block, or keep the old single-model
