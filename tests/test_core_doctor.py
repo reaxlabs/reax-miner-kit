@@ -25,7 +25,7 @@ class DoctorTests(unittest.TestCase):
                     calls.append(cmd)
                     return fixture['commands'].get(' '.join(cmd), {'returncode': 127, 'stdout': '', 'stderr': 'not found'})
                 with patch('urllib.request.urlopen', side_effect=AssertionError('offline doctor used network')):
-                    result = diagnose(args, probe=probe, host=fixture['host'])
+                    result = diagnose(args, probe=probe, host=fixture['host'], release=registered_pending_release())
                 self.assertEqual(result.status, fixture['expect']['status'])
                 self.assertEqual([pool['id'] for pool in result.data['eligible_pools'] if pool['ok']], fixture['expect']['eligible'])
                 self.assertEqual(result.data['os'], fixture['host']['os'])

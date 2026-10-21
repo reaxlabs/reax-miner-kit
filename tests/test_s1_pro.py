@@ -26,6 +26,7 @@ def with_placeholders():
     # in-test copy of the bundled descriptor with the pre-publication sha256:TBD-* digests injected
     value = bundled()
     value['images']['public'] = False
+    value['status'].update(launch_status='registered_starting_soon', live=False)
     value['images']['digests'] = {k: 'sha256:TBD-' + k for k in value['images']['digests']}
     return value
 
