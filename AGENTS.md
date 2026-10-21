@@ -52,4 +52,10 @@ Tests use fakes and temporary directories; do not introduce real wallet, Docker,
 - Locking/pruning remain operator responsibilities: use flock on `$REAX_HOME/.lock` around install/update/timer operations, and retain the five newest rollback snapshots. Automatic locking/pruning is not implemented.
 - Rehearsal RPC still uses permissive CORS/default methods. Keep it on an isolated trusted network; do not change node flags without pinned-node/bootstrap compatibility checks.
 
+## Kit 0.1.7 rules
+
+- From chain block 9331987 one hotkey may serve several s1 models and hold one competition entry ([docs/MULTIMODEL.md](docs/MULTIMODEL.md)). `reaxctl install` stays single-pool: never run it over a multi-model `compose.yml` / `miner.env`.
+- Write competition elements only with `reax-commit set` / `reax-engine-submit` from the miner image (they keep the inference element), never with a hand-made `btcli` commit. Run `--dry-run` first and show the fields to the person.
+- Never set `REAX_FORCE_MULTIROLE=1` or pass `--replace-all` on mainnet without the person's explicit approval of the exact fields; both bypass the start-block protection and `--replace-all` drops the other element.
+
 See the [README security model](README.md#security-model) for fetch limits, source pins, container settings and documented runtime limitations.

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.1.7
+
+- Release descriptor 1.2.0rc10 (reax-subnet commit 131b107, tag `v1.2.0-rc10`): new image digests for the miner and all five runtimes. Manifests, pool commitments, hardware and the miner defaults (32 concurrent / 456 per minute per caller, 8 in flight) are unchanged; `minimum_release` stays 1.1.0rc2 (the single-model protocol `reax-s1/1` is unchanged). The descriptor `status` block is the live block (live true, from PR #4); the bundled copy in the release tarball now matches it.
+- Several models on one hotkey and one competition entry next to inference, both from chain block 9331987 (about 13:00 UTC on 21 Oct 2026): new `docs/MULTIMODEL.md` (exact commands: `REAX_MODELS`, one sidecar per model, `reax-commit show|set|withdraw` and `reax-selfcheck` through `docker compose run --no-deps --entrypoint ...` of the miner image) and `service/docker-compose.multimodel.example.yml`. The start block is enforced by the miner image and `reax-commit`; the kit adds no block gate and no new command.
+- `reaxctl verify` accepts the multi-model `/health` (`{"models": {model: manifest_id}}`, no single `model` / `manifest_id`): the installed pool must be one of the served models with this release's manifest.
+
 ## 0.1.6
 
 - Release descriptor 1.2.0rc9.post6 (reax-subnet commit d5d551e): new image digests for the miner and all five runtimes. The miner image defaults to 32 concurrent / 456 per minute per caller (was 16 / 240 in 1.2.0rc3); the limits grow further when the miner serves several backends. `reaxctl update check` / `update apply` moves an installed miner to the new images.

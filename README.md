@@ -102,6 +102,10 @@ The same release also describes two smaller pools: **s1-lite** (8 GB+ NVIDIA GPU
 
 The runtime sidecar listens on loopback port 8102 only; never publish it. Service templates for running the s1-pro runtime and miner without `reaxctl run` are in [service/](service/); the full walk-through is [docs/S1-PRO.md](docs/S1-PRO.md). The commitment is `reax-s1/1:s1-pro:5b11440bf57b5434`.
 
+## Several models and a competition entry on one hotkey (from block 9331987)
+
+From chain block 9331987 (about 13:00 UTC on 21 October 2026, release 1.2.0rc10) one hotkey can serve several s1 models (`REAX_MODELS`, one sidecar per model) and hold one competition entry next to its inference element. `reaxctl install` still installs one pool; for several models run the same pinned images with [service/docker-compose.multimodel.example.yml](service/docker-compose.multimodel.example.yml). Write a competition entry with `reax-commit set ...` from the miner image, never with a hand-made `btcli` commit (it replaces all fields). Commands, limits and the pre-start refusals: [docs/MULTIMODEL.md](docs/MULTIMODEL.md).
+
 ## Competitions
 
 From 16 October 2026 12:00 UTC the subnet runs the engine competition and the use-case tracks (50/50 split). They need no new mining mode in this kit: see https://reax.co/competitions and [COMPETITIONS.md](https://github.com/reaxlabs/reax-subnet/blob/release/1.2-rc/docs/COMPETITIONS.md) in the subnet repository.

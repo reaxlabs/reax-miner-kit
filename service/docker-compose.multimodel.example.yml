@@ -1,0 +1,84 @@
+# Example: one hotkey serving two models (s1-lite + s1-cpu), release 1.2.0rc10. Walk-through: docs/MULTIMODEL.md.
+# Several models on one hotkey count from chain block 9331987 (about 13:00 UTC on 21 Oct 2026): start this stack after that
+# block (before it the miner refuses to start with two or more models). `reaxctl install` does NOT render this file.
+#
+# Prepare once (run as your own user, never as root; see docs/MULTIMODEL.md for the weights download commands):
+#   export REAX_UID=$(id -u) REAX_GID=$(id -g) REAX_WALLET_NAME=<coldkey name> REAX_WALLET_HOTKEY=<hotkey name>
+#   mkdir -p secrets && openssl rand -hex 32 > secrets/runtime-token && chmod 0600 secrets/runtime-token
+#   cp miner.env.example miner.env                 # REAX_NETWORK/NETUID, wallet + hotkey names, REAX_EXTERNAL_IP/PORT
+#   REAX_S1_LITE_WEIGHTS=/srv/reax/s1-lite REAX_S1_CPU_WEIGHTS=/srv/reax/s1-cpu docker compose -f docker-compose.multimodel.example.yml up -d
+#
+# The tag is mutable on GHCR: for a final release use the name@sha256:... digests from releases/current.json.
+# Another model: add its sidecar block (s1-fast 8101 / s1-pro 8102: copy service/docker-compose.s1-pro.yml and change port and
+# weights; they use RUNE_HOST / RUNE_PORT), list it in REAX_MODELS and add its REAX_<MODEL>_RUNTIME_URL. Every model needs its
+# own port and weights directory; the miner refuses two models on one URL. Never publish a sidecar port (8101-8104, 8000).
+services:
+  runtime-s1-lite:
+    image: ghcr.io/reaxlabs/reax-s1-lite-runtime:1.2.0-rc10   # pin by digest for a final release (Jetson: reax-s1-lite-runtime-jetson)
+    user: "${REAX_UID:?set REAX_UID=$(id -u)}:${REAX_GID:?set REAX_GID=$(id -g)}"
+    init: true
+    network_mode: host
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      S1M_INTERNAL_TOKEN_FILE: /run/runtime-token
+      RUNTIME_HOST: 127.0.0.1          # loopback only
+      RUNTIME_PORT: "8103"
+      GGUF_MODEL_DIR: /model
+      GGUF_N_GPU_LAYERS: "-1"
+    volumes:
+      - ./secrets/runtime-token:/run/runtime-token:ro
+      - ${REAX_S1_LITE_WEIGHTS:?set REAX_S1_LITE_WEIGHTS to the s1-lite weights directory}:/model:ro
+    deploy:
+      resources:
+        reservations:
+          devices: [{driver: nvidia, count: 1, capabilities: [gpu]}]
+    logging: {driver: json-file, options: {max-size: "50m", max-file: "5"}}
+  runtime-s1-cpu:
+    image: ghcr.io/reaxlabs/reax-s1-cpu-runtime:1.2.0-rc10   # pin by digest for a final release
+    user: "${REAX_UID:?set REAX_UID=$(id -u)}:${REAX_GID:?set REAX_GID=$(id -g)}"
+    init: true
+    network_mode: host
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      S1M_INTERNAL_TOKEN_FILE: /run/runtime-token
+      RUNTIME_HOST: 127.0.0.1          # loopback only
+      RUNTIME_PORT: "8104"
+      GGUF_MODEL_DIR: /model
+      GGUF_N_GPU_LAYERS: "0"
+    volumes:
+      - ./secrets/runtime-token:/run/runtime-token:ro
+      - ${REAX_S1_CPU_WEIGHTS:?set REAX_S1_CPU_WEIGHTS to the s1-cpu weights directory}:/model:ro
+    logging: {driver: json-file, options: {max-size: "50m", max-file: "5"}}
+  miner:
+    image: ghcr.io/reaxlabs/reax-miner:1.2.0-rc10   # pin by digest for a final release
+    user: "${REAX_UID:?set REAX_UID=$(id -u)}:${REAX_GID:?set REAX_GID=$(id -g)}"
+    init: true
+    network_mode: host
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    env_file: miner.env
+    depends_on:
+      runtime-s1-lite:
+        condition: service_healthy
+      runtime-s1-cpu:
+        condition: service_healthy
+    environment:
+      REAX_MECHANISM: s1
+      REAX_MODELS: s1-lite,s1-cpu      # at least two, each once; leave REAX_MODEL unset (the first listed is the primary model)
+      REAX_S1_LITE_RUNTIME_URL: http://127.0.0.1:8103
+      REAX_S1_CPU_RUNTIME_URL: http://127.0.0.1:8104
+      REAX_RUNTIME_TOKEN_FILE: /run/reax-runtime-token
+      REAX_PUBLISH_COMMITMENT: "1"     # reax-s1m/1:s1-lite:8c7297e14e5e89bf,s1-cpu:f2c9981f0766f2a6
+    ulimits:
+      nofile: {soft: 65536, hard: 65536}
+    volumes:
+      # hotkey and public coldkey address only, read-only (the same mounts `reaxctl install` renders); no coldkey secret
+      - ${HOME}/.bittensor/wallets/${REAX_WALLET_NAME:?set REAX_WALLET_NAME}/hotkeys/${REAX_WALLET_HOTKEY:?set REAX_WALLET_HOTKEY}:/wallets/${REAX_WALLET_NAME}/hotkeys/${REAX_WALLET_HOTKEY}:ro
+      - ${HOME}/.bittensor/wallets/${REAX_WALLET_NAME}/coldkeypub.txt:/wallets/${REAX_WALLET_NAME}/coldkeypub.txt:ro
+      - ./secrets/runtime-token:/run/reax-runtime-token:ro
+    logging: {driver: json-file, options: {max-size: "50m", max-file: "5"}}
