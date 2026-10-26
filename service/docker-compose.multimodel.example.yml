@@ -1,4 +1,4 @@
-# Example: one hotkey serving two models (s1-lite + s1-cpu), release 1.2.0rc10. Walk-through: docs/MULTIMODEL.md.
+# Example: one hotkey serving two models (s1-lite + s1-cpu), release 1.2.0rc11.post7. Walk-through: docs/MULTIMODEL.md.
 # Several models on one hotkey count from chain block 9331987 (about 13:00 UTC on 21 Oct 2026): start this stack after that
 # block (before it the miner refuses to start with two or more models). `reaxctl install` does NOT render this file.
 #
@@ -14,7 +14,7 @@
 # own port and weights directory; the miner refuses two models on one URL. Never publish a sidecar port (8101-8104, 8000).
 services:
   runtime-s1-lite:
-    image: ghcr.io/reaxlabs/reax-s1-lite-runtime:1.2.0-rc10.post1   # pin by digest for a final release (Jetson: reax-s1-lite-runtime-jetson)
+    image: ghcr.io/reaxlabs/reax-s1-lite-runtime:1.2.0-rc11.post7   # pin by digest for a final release (Jetson: reax-s1-lite-runtime-jetson)
     user: "${REAX_UID:?set REAX_UID=$(id -u)}:${REAX_GID:?set REAX_GID=$(id -g)}"
     init: true
     network_mode: host
@@ -36,7 +36,7 @@ services:
           devices: [{driver: nvidia, count: 1, capabilities: [gpu]}]
     logging: {driver: json-file, options: {max-size: "50m", max-file: "5"}}
   runtime-s1-cpu:
-    image: ghcr.io/reaxlabs/reax-s1-cpu-runtime:1.2.0-rc10.post1   # pin by digest for a final release
+    image: ghcr.io/reaxlabs/reax-s1-cpu-runtime:1.2.0-rc11.post7   # pin by digest for a final release
     user: "${REAX_UID:?set REAX_UID=$(id -u)}:${REAX_GID:?set REAX_GID=$(id -g)}"
     init: true
     network_mode: host
@@ -54,7 +54,7 @@ services:
       - ${REAX_S1_CPU_WEIGHTS:?set REAX_S1_CPU_WEIGHTS to the s1-cpu weights directory}:/model:ro
     logging: {driver: json-file, options: {max-size: "50m", max-file: "5"}}
   miner:
-    image: ghcr.io/reaxlabs/reax-miner:1.2.0-rc10.post1   # pin by digest for a final release
+    image: ghcr.io/reaxlabs/reax-miner:1.2.0-rc11.post7   # pin by digest for a final release
     user: "${REAX_UID:?set REAX_UID=$(id -u)}:${REAX_GID:?set REAX_GID=$(id -g)}"
     init: true
     network_mode: host

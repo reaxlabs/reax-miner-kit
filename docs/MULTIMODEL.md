@@ -1,4 +1,4 @@
-# Several models on one hotkey, and a competition entry next to it (release 1.2.0rc10)
+# Several models on one hotkey, and a competition entry next to it (release 1.2.0rc11.post7)
 
 From chain block **9331987** (about 13:00 UTC on 21 October 2026) one hotkey can
 
@@ -31,7 +31,18 @@ the pool you installed.
   models must not share a URL. Hardware is per model: the sidecars together must fit the machine (you save registrations, not
   hardware). Never publish the sidecar ports 8101-8104 or 8000.
 * Limits (`REAX_MAX_CONCURRENT`, `REAX_PER_CALLER_CONCURRENCY`, `REAX_PER_CALLER_PER_MINUTE`) apply **per model**, with the
-  image defaults 8 / 32 / 456.
+  image defaults below. Leave these global overrides unset so each model keeps its own limits:
+
+  | Model | Per-caller concurrency | Per-caller per minute | Max concurrent | Pending per IP |
+  | --- | --- | --- | --- | --- |
+  | s1-pro | 64 | 728 | 16 | 128 |
+  | s1-fast | 64 | 888 | 16 | 128 |
+  | s1-lite / s1-cpu | 32 | 456 | 8 | 64 |
+
+  `REAX_MAX_PENDING_PER_IP` is shared across the miner and defaults to twice the largest per-model caller concurrency.
+  These are the 1.2.0rc11.post7 single-backend defaults; several backends can raise them automatically.
+  From Tue 27 Oct 2026 16:00 UTC, when REAX validators switch, the per-hotkey caps are 640 decisions/s for s1-pro
+  and 2560 decisions/s for s1-fast. Update the pinned images and remove old lower overrides before that switch.
 * `GET /health` on the miner port returns `{"protocol": "reax-s1/1", "version": ..., "models": {"<model>": "<manifest_id>", ...}}`.
 * The miner publishes `reax-s1m/1:<model>:<manifest_id>,<model>:<manifest_id>` on start (canonical order s1-fast, s1-pro,
   s1-lite, s1-cpu); the manifest ids are the `manifest_id` values of the pools in `releases/current.json`. A competition
