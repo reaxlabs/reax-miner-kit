@@ -44,7 +44,7 @@ def run_doctor(smi_row, cc=None, pool='s1-pro', check_hf=False, release=None):
 class DescriptorTest(unittest.TestCase):
     def test_bundled_is_1_2_0rc10_with_s1_pro_enabled(self):
         value = descriptor.validate(bundled())
-        self.assertEqual(value['release_id'], '1.2.0rc10.post1')
+        self.assertEqual(value['release_id'], '1.2.0rc11.post7')
         pools = {p['id']: p for p in value['pools']}
         self.assertTrue(pools['s1-pro']['enabled_at_launch'])
         self.assertTrue(pools['s1-fast']['enabled_at_launch'])
@@ -70,7 +70,7 @@ class DescriptorTest(unittest.TestCase):
         for key, digest in digests.items():
             self.assertRegex(digest, r'^sha256:[0-9a-f]{64}$', key)
         self.assertTrue(value['source']['public'])
-        self.assertEqual(value['source']['commit'], 'f61fe7961d323c9f2b4d2b4ee26508c605e52e0d')
+        self.assertEqual(value['source']['commit'], 'eadfb336be40ebdc45f9c6a971fa518754d9e2da')
         descriptor.validate(value)
 
     def test_placeholders_all_in_digests_only(self):
@@ -102,7 +102,7 @@ class DescriptorTest(unittest.TestCase):
 
     def test_image_ref_never_pins_a_placeholder(self):
         value = with_placeholders()
-        self.assertEqual(install.image_ref(value, 's1_pro_runtime'), 'ghcr.io/reaxlabs/reax-s1-pro-runtime:1.2.0-rc10.post1')
+        self.assertEqual(install.image_ref(value, 's1_pro_runtime'), 'ghcr.io/reaxlabs/reax-s1-pro-runtime:1.2.0-rc11.post7')
 
     def test_doctor_is_quiet_about_placeholders_for_the_bundled_release(self):
         result = run_doctor('NVIDIA H100 80GB HBM3, 81559, 580.65')

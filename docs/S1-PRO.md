@@ -1,4 +1,4 @@
-# s1-pro walk-through (release 1.2.0rc1)
+# s1-pro walk-through (release 1.2.0rc11.post7)
 
 s1-pro serves Surogate Rune 26B-A4B v3 (`surogate/rune-26b-a4b-GGUF@c6b360d47895bb77bdf3805a13ee5a5557ab1921`, bf16
 safetensors, about 52 GB). Manifest `5b11440bf57b5434`, commitment `reax-s1/1:s1-pro:5b11440bf57b5434`. Hardware, share and
@@ -27,7 +27,15 @@ calibration details are in the subnet repository (`docs/hardware.md`, `docs/MINE
 5. `./reaxctl start`, `./reaxctl verify`, `./reaxctl service install`.
 
 Switching an installed miner from s1-fast to s1-pro changes the manifest and resets scores: it needs `--accept-manifest-change` and
-human confirmation. A miner serves one pool per hotkey.
+human confirmation. For several pools on one hotkey, follow [MULTIMODEL.md](MULTIMODEL.md).
+
+## Probe limits
+
+`reaxctl install` leaves probe-limit overrides unset and uses the pinned miner image defaults: s1-pro
+`REAX_PER_CALLER_CONCURRENCY=64`, `REAX_PER_CALLER_PER_MINUTE=728`, `REAX_MAX_CONCURRENT=16`,
+`REAX_MAX_PENDING_PER_IP=128`. Remove any older, lower overrides in an existing `miner.env` or Compose environment.
+From Tue 27 Oct 2026 16:00 UTC, when REAX validators switch, s1-pro can be measured up to 640 decisions/s per hotkey.
+For the other pools and several models, see [MULTIMODEL.md](MULTIMODEL.md).
 
 ## Without reaxctl
 

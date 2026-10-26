@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.1.8
+
+- Release descriptor 1.2.0rc11.post7 (reax-subnet commit eadfb336be40ebdc45f9c6a971fa518754d9e2da, tag `v1.2.0-rc11.post7`): refreshed image digests and live chain snapshot. The bundled descriptor in the tarball matches the release descriptor. Pool manifests, pinned weights and minimum release 1.1.0rc2 are unchanged.
+- Per-model miner defaults (per-caller concurrency / per minute / max concurrent): s1-pro 64 / 728 / 16, s1-fast 64 / 888 / 16, pending per IP 128; s1-lite and s1-cpu stay at 32 / 456 / 8, pending 64. `reaxctl install` inherits these from the pinned image. Manual Compose examples and setup docs follow this release; remove older lower environment overrides.
+- From Tue 27 Oct 2026 16:00 UTC, when REAX validators switch, per-hotkey caps become 640 decisions/s for s1-pro and 2560 decisions/s for s1-fast. Update miners before the switch; validator and competition changes require no new miner command.
+
 ## 0.1.7
 
 - Release descriptor 1.2.0rc10.post1 (reax-subnet commit f61fe79, tag `v1.2.0-rc10.post1`; validator-only change on top of 1.2.0rc10, the miner and runtimes behave as in 1.2.0rc10): new image digests for the miner and all five runtimes. Manifests, pool commitments, hardware and the miner defaults (32 concurrent / 456 per minute per caller, 8 in flight) are unchanged; `minimum_release` stays 1.1.0rc2 (the single-model protocol `reax-s1/1` is unchanged). The descriptor `status` block is the live block (live true, from PR #4); the bundled copy in the release tarball now matches it.

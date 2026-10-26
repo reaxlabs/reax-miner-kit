@@ -83,7 +83,7 @@ class MultiModelTemplateTest(unittest.TestCase):
 class BundledDescriptorTest(unittest.TestCase):
     def test_bundled_copy_is_live_so_the_offline_fallback_does_not_block_mainnet(self):
         value = descriptor.validate(bundled())
-        self.assertEqual(value['release_id'], '1.2.0rc10.post1')
+        self.assertEqual(value['release_id'], '1.2.0rc11.post7')
         self.assertTrue(value['status']['live'])
         self.assertEqual((value['status']['launch_status'], value['status']['network'], value['status']['netuid']), ('live', 'finney', 92))
         self.assertIsNone(install.gate(value, 'mainnet', confirm=True))

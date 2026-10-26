@@ -1,7 +1,7 @@
 {
   "schema": "reax-release/1",
-  "release_id": "1.2.0rc10.post1",
-  "updated": "2026-10-21",
+  "release_id": "1.2.0rc11.post7",
+  "updated": "2026-10-26",
   "status": {
     "launch_status": "live",
     "live": true,
@@ -12,17 +12,17 @@
     "chain": {
       "netuid": 92,
       "network": "finney",
-      "sdk": "11.3.0",
       "genesis_hash": "0x2f0555cc76fc2840a25a6ea3b9637146806f1f44b090c175ffde2a7e5ab36c03",
-      "block": 9282858,
-      "block_hash": "0x303588ae34c69f5e75b0f45a99f38c64cada76d8fbf91a92e9f9157388c1dab9",
-      "block_time": "2026-10-14T16:55:12+00:00",
-      "checked_at": "2026-10-14T16:55:47.075179+00:00",
+      "block": 9367627,
+      "block_hash": "0xd9cb0516bbb07e9208c353be6257b0875cb025828644f35b085042ffe82daeb0",
+      "block_time": "2026-10-26T11:45:12+00:00",
+      "checked_at": "2026-10-26T11:45:48.992671+00:00",
+      "sdk": "substrate-interface 1.8.1",
       "exists": true,
       "owner": "5GMxpAvB9iJkDtNDELhVn8GmbBz5XChnWcLaThWTJ38QmU6B",
       "subtoken_enabled": true,
       "first_emission_block": 9280309,
-      "subnet_emission_enabled": false,
+      "subnet_emission_enabled": true,
       "registration_allowed": true
     }
   },
@@ -34,23 +34,23 @@
     "s1_lite_runtime": "ghcr.io/reaxlabs/reax-s1-lite-runtime",
     "s1_lite_runtime_jetson": "ghcr.io/reaxlabs/reax-s1-lite-runtime-jetson",
     "s1_cpu_runtime": "ghcr.io/reaxlabs/reax-s1-cpu-runtime",
-    "tag": "1.2.0-rc10.post1",
+    "tag": "1.2.0-rc11.post7",
     "digests": {
-      "miner": "sha256:a3043b3228eb1608b595d201ce9d265bcf2b12fe988420b08395e4f0dd4f59ad",
-      "s1_fast_runtime": "sha256:4b2ec38e1d3b22fa91bb91a1210de0ceb70c928338afe9e8a627de331d27a4d9",
-      "s1_pro_runtime": "sha256:6f578cc235e0cca492f8340e97d05fb60d50a96101ce69ba57ef0fa7493cecc0",
-      "s1_lite_runtime": "sha256:ffa03540fe9d1df00a68525dc98c8c1da5cb962d7f91987e36ff10f3bb6b886f",
-      "s1_lite_runtime_jetson": "sha256:c097ccbb27f63d3411f8b3bb7133d395935c2b981c2211c14bebacebea6667e4",
-      "s1_cpu_runtime": "sha256:7d8bc7feb2e0e317ab8b06fe74f8cbd4abdeae2e069b74f11bf82908051f7687"
+      "miner": "sha256:61ec2f10fc84d5480a1d2cdddfa4d27ffc7f774011d2d7b1ecfcb23ecfc84085",
+      "s1_fast_runtime": "sha256:b9965270db054b1141176b0723bba111afca78ab4d4a6139a659b509084b2ab4",
+      "s1_pro_runtime": "sha256:393082911805be27739620c37de15f79c6fbd37002a7ffd26c6763acd99551cc",
+      "s1_lite_runtime": "sha256:73cddba2fe765586daab68795936eeba02ce0bf674019c95ad13ce194509cd9f",
+      "s1_lite_runtime_jetson": "sha256:a70007ecf52e3b40ef9361a2a7ff7e2ea6ecae947a9f68d351331912e65605ef",
+      "s1_cpu_runtime": "sha256:61b8551f4c1700c2a8ce04bb24d32dc23b0a698bff09cc031089bd07d7c11f7d"
     },
     "public": true,
-    "note": "Published by reaxlabs/reax-subnet docker.yml on commit f61fe79 (release 1.2.0rc10.post1, tag v1.2.0-rc10.post1). The miner image defaults to 32 concurrent / 456 per minute per caller and serves several models on one hotkey from block 9331987 (REAX_MODELS). s1_cpu_runtime is a multi-arch index (linux/amd64 + linux/arm64); s1_lite_runtime_jetson is the linux/arm64 JetPack build (not yet tested on Jetson hardware)."
+    "note": "Published by reaxlabs/reax-subnet docker.yml on commit eadfb336be40ebdc45f9c6a971fa518754d9e2da (release 1.2.0rc11.post7, tag v1.2.0-rc11.post7). Single-backend miner defaults (per-caller concurrency / per minute / max concurrent): s1-pro 64 / 728 / 16, s1-fast 64 / 888 / 16, pending per IP 128; s1-lite / s1-cpu 32 / 456 / 8, pending 64. From Tue 27 Oct 2026 16:00 UTC, when REAX validators switch, per-hotkey caps are s1-pro 640 decisions/s and s1-fast 2560 decisions/s. s1_cpu_runtime is a multi-arch index (linux/amd64 + linux/arm64); s1_lite_runtime_jetson is the linux/arm64 JetPack build (not yet tested on Jetson hardware)."
   },
   "source": {
     "git": "https://github.com/reaxlabs/reax-subnet",
-    "ref": "f61fe7961d323c9f2b4d2b4ee26508c605e52e0d",
+    "ref": "eadfb336be40ebdc45f9c6a971fa518754d9e2da",
     "public": true,
-    "commit": "f61fe7961d323c9f2b4d2b4ee26508c605e52e0d"
+    "commit": "eadfb336be40ebdc45f9c6a971fa518754d9e2da"
   },
   "pools": [
     {

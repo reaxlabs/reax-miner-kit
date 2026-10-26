@@ -1,4 +1,4 @@
-# Manual s1-pro miner (release 1.2.0rc1) for operators who do not use `reaxctl install`/`reaxctl run`.
+# Manual s1-pro miner (release 1.2.0rc11.post7) for operators who do not use `reaxctl install`/`reaxctl run`.
 # `reaxctl install --pool s1-pro --mode mainnet` renders an equivalent file for you.
 #
 # Prepare once (run as your own user, never as root):
@@ -18,7 +18,7 @@
 # Never publish the sidecar port 8102. The sidecar listens on loopback of the host network only; the miner binds 8091.
 services:
   runtime:
-    image: ghcr.io/reaxlabs/reax-s1-pro-runtime:1.2.0-rc1   # pin by digest for a final release
+    image: ghcr.io/reaxlabs/reax-s1-pro-runtime:1.2.0-rc11.post7   # pin by digest for a final release
     user: "${REAX_UID:?set REAX_UID=$(id -u)}:${REAX_GID:?set REAX_GID=$(id -g)}"
     init: true
     network_mode: host
@@ -39,7 +39,7 @@ services:
           devices: [{driver: nvidia, count: 1, capabilities: [gpu]}]
     logging: {driver: json-file, options: {max-size: "50m", max-file: "5"}}
   miner:
-    image: ghcr.io/reaxlabs/reax-miner:1.2.0-rc1
+    image: ghcr.io/reaxlabs/reax-miner:1.2.0-rc11.post7
     user: "${REAX_UID:?set REAX_UID=$(id -u)}:${REAX_GID:?set REAX_GID=$(id -g)}"
     init: true
     network_mode: host
@@ -53,6 +53,10 @@ services:
     environment:
       REAX_MECHANISM: s1
       REAX_MODEL: s1-pro
+      REAX_PER_CALLER_CONCURRENCY: "64"
+      REAX_PER_CALLER_PER_MINUTE: "728"
+      REAX_MAX_CONCURRENT: "16"
+      REAX_MAX_PENDING_PER_IP: "128"
       REAX_S1_PRO_RUNTIME_URL: http://127.0.0.1:8102
       REAX_RUNTIME_TOKEN_FILE: /run/reax-runtime-token
       REAX_PUBLISH_COMMITMENT: "1"   # reax-s1/1:s1-pro:5b11440bf57b5434
