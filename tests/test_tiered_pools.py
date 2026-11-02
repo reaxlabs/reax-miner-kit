@@ -324,6 +324,7 @@ class InstallTests(unittest.TestCase):
         d['images']['digests'] = {k: 'sha256:' + format(i + 1, 'x') * 64 for i, k in enumerate(d['images']['digests'])}
         return d
 
+    @patch.object(install.sys, 'version_info', (3, 10, 12))
     def test_mainnet_refuses_dev_pools_before_any_work(self):
         for pool in ('s1-lite', 's1-cpu'):
             with tempfile.TemporaryDirectory() as tmp, patch.object(install, 'descriptor', return_value=self.live()), patch.object(install, 'runner') as runner:

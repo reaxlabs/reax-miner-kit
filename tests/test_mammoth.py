@@ -76,6 +76,7 @@ class MammothTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'checksum failed'):
                 io.verified_configs(P['runtime'])
 
+    @patch.object(io.sys, 'version_info', (3, 10, 12))
     def test_cc_fix_refuses_before_state_or_children(self):
         args = argparse.Namespace(home=str(self.home/'new'), mode='mainnet', pool='s1-pro', confirm_mainnet=True, cc_fix=True)
         with patch.object(io, 'descriptor', return_value=D), patch.object(io, 'runner') as run:
