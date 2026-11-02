@@ -102,7 +102,11 @@ def selfcheck(args, home=None, config=None, start=None):
         return Result('selfcheck', 'blocked', 'The reference self-check needs the real model runtime; the localnet rehearsal uses a hash runtime. Install with --mode testnet or --mode mainnet on the GPU host.', exit_code=10)
     if not (home / 'compose.yml').exists() or not (home / 'miner.env').exists():
         return Result('selfcheck', 'blocked', 'Run install before the self-check.', exit_code=10)
-    failure = io.gate(io.descriptor(home), mode, config.get('mainnet_confirmed', False))
+    release = io.descriptor(home)
+    selected = io.pool_of(release, config.get('pool', 's1-fast'))
+    if selected and config.get('manifest_id') and config['manifest_id'] != selected['manifest_id']:
+        return Result('selfcheck', 'blocked', 'Installed manifest differs from the current validator pool. Review reaxctl update check and explicitly approve the manifest change before selfcheck.', exit_code=10)
+    failure = io.gate(release, mode, config.get('mainnet_confirmed', False))
     if failure:
         failure.command = 'selfcheck'
         return failure

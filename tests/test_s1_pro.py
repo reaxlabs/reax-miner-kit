@@ -140,6 +140,16 @@ class DoctorS1ProTest(unittest.TestCase):
             result = run_doctor(row)
             self.assertTrue(any('not been measured' in w and name in w for w in result.warnings), row)
 
+    def test_only_server_edition_is_measured_and_small_card_is_not_ready(self):
+        measured = run_doctor('NVIDIA RTX PRO 6000 Blackwell Server Edition, 97887, 580.65')
+        self.assertFalse(any('not been measured' in w for w in measured.warnings))
+        for name, memory in [('NVIDIA RTX PRO 6000 Blackwell Workstation Edition', 97887),
+                             ('NVIDIA L40S', 49140), ('NVIDIA RTX A6000', 49140), ('NVIDIA GeForce RTX 4090', 24564)]:
+            result = run_doctor(name + ', ' + str(memory) + ', 580.65')
+            self.assertTrue(any('not been measured' in w for w in result.warnings), name)
+            if memory < 48000:
+                self.assertFalse(result.data['real_mining_possible'])
+
     def test_small_card_blocks_selected_s1_pro_only(self):
         row = 'NVIDIA GeForce RTX 4090, 24564, 580.65'
         self.assertTrue(any(b['id'] == 'gpu_capacity_s1-pro' for b in run_doctor(row).data['blockers']))

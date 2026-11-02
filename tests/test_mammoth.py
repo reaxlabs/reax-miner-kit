@@ -68,11 +68,12 @@ class MammothTest(unittest.TestCase):
             self.assertEqual(hashlib.sha256((directory/name).read_bytes()).hexdigest(), digest)
 
     def test_corrupt_config_fails_before_install_children(self):
-        directory = self.home/'configs'
-        directory.mkdir()
-        (directory/'SHA256SUMS').write_text('bad')
-        with patch.object(io.pathlib.Path, 'resolve', return_value=self.home/'x/y.py'):
-            with self.assertRaisesRegex(ValueError, 'FLA'):
+        import shutil
+        directory = self.home/'configs'/'rtx-pro-6000-blackwell-server'
+        shutil.copytree(io.verified_configs(P['runtime']), directory)
+        (directory/'_meta.json').write_text('corrupt')
+        with patch.object(io, '__file__', str(self.home/'reaxlib/cmd_install.py')):
+            with self.assertRaisesRegex(ValueError, 'checksum failed'):
                 io.verified_configs(P['runtime'])
 
     def test_cc_fix_refuses_before_state_or_children(self):
@@ -112,6 +113,17 @@ class MammothTest(unittest.TestCase):
             result=cmd_update.handle(args)
         self.assertEqual(result.code(),13)
         self.assertEqual(before,{n:(self.home/n).read_bytes() for n in before})
+
+    def test_new_selfcheck_refuses_installed_rune_before_managers(self):
+        old = dict(self.config, manifest_id='5b11440bf57b5434')
+        (self.home/'compose.yml').write_text('old compose')
+        (self.home/'miner.env').write_text('REAX_MODEL=s1-pro\n')
+        args = argparse.Namespace(home=str(self.home), mode='mainnet')
+        with patch.object(io, 'descriptor', return_value=D), patch.object(cmd_selfcheck, 'compose') as run:
+            result = cmd_selfcheck.selfcheck(args, config=old)
+        self.assertEqual(result.code(), 10)
+        self.assertIn('Installed manifest differs', result.summary)
+        run.assert_not_called()
 
     def test_other_pool_runtime_pins_unchanged(self):
         old=json.loads((ROOT/'tests/fixtures/post7-descriptor.json').read_text())

@@ -236,7 +236,7 @@ def diagnose(args, probe=None, host=None, release=None):
             elif pool in target and any(gpu['vram_gb'] < gpu_req['min_vram_gb'] * 0.97 for gpu in fitting) and not jetson:
                 warnings.append(pool['id'] + ': usable VRAM is slightly below the nominal minimum; accepted within 1 GB tolerance.')
             if active and pool['id'] == 's1-pro':
-                unmeasured = unmeasured_gpus(pool, fitting)
+                unmeasured = unmeasured_gpus(pool, gpus if (pool.get('runtime') or {}).get('contract') else fitting)
                 if unmeasured:
                     warnings.append('s1-pro: ' + ', '.join(unmeasured) + ' has not been measured bit-identical to the reference ('
                                     + (gpu_req.get('unmeasured_note') or 'run reaxctl selfcheck before committing') + ' Run reaxctl selfcheck before committing on chain.')
@@ -276,7 +276,7 @@ def diagnose(args, probe=None, host=None, release=None):
     available = any(item['ok'] for item in eligible if item['id'] in {p['id'] for p in target})  # a no-GPU host must not look ready just because s1-cpu fits
     common_blockers = [item for item in blockers if not item['id'].startswith(('disk_', 'gpu_capacity_'))]
     launch_pools = {pool['id'] for pool in release['pools'] if descriptor.pool_enabled(pool)}
-    ready = any(pool['ok'] and pool['id'] in launch_pools for pool in eligible) and not common_blockers and release['status']['live'] and release['status']['netuid'] is not None and release['images']['public']
+    ready = any(pool['ok'] and pool['id'] in launch_pools and pool['id'] in {p['id'] for p in target} for pool in eligible) and not common_blockers and release['status']['live'] and release['status']['netuid'] is not None and release['images']['public']
     source_ok = bool(os.environ.get('REAX_SOURCE_DIR')) or bool(release['source'].get('public'))
     data = dict(host, jetson=jetson, recommended_pool=recommended, gpus=gpus, docker=docker, nvidia_container_toolkit=toolkit_ok, ntp_synchronized=ntp_ok,
                 eligible_pools=eligible, rehearsal_capable=rehearsal, rehearsal_possible=bool(rehearsal and source_ok), rehearsal_source_available=source_ok, real_mining_possible=bool(ready), blockers=blockers,

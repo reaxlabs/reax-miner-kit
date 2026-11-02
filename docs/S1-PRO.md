@@ -27,7 +27,7 @@ checksum-verified Server Edition configs are mandatory. The root filesystem is r
 Both HF offline variables are set. The Rune `--cc-fix` is unverified for mammoth and is refused.
 
 First start can take about eight minutes to compile kernels. Run `./reaxctl selfcheck --json`
-and require PASS before registration or serving. The kit render has not been run on a GPU.
+and require PASS before registration or serving. Kit 0.1.9 selfcheck refuses an installed manifest that differs from the current pool. The kit render has not been run on a GPU.
 Registration remains a human step in your own wallet.
 
 Kit 0.1.8 cannot render the pinned config mount. The descriptor disables s1-pro for that controller;
