@@ -1,14 +1,14 @@
 {
   "schema": "reax-release/1",
-  "release_id": "1.2.0rc11.post7",
-  "updated": "2026-10-26",
+  "release_id": "1.2.0rc11.post8.1-kit1",
+  "updated": "2026-11-02",
   "status": {
     "launch_status": "live",
     "live": true,
     "netuid": 92,
     "network": "finney",
     "testnet_netuid": null,
-    "notes": "Start with a free local-chain practice run using test TAO before real registration. This check does not enable real mining; verify runtime and public ingress.",
+    "notes": "Use kit 0.1.9 or newer for s1-pro mammoth-1. Kit 0.1.8 refuses new s1-pro installs because it cannot mount the pinned FLA configs. Start with a free local-chain practice run before real registration.",
     "chain": {
       "netuid": 92,
       "network": "finney",
@@ -30,27 +30,27 @@
   "images": {
     "miner": "ghcr.io/reaxlabs/reax-miner",
     "s1_fast_runtime": "ghcr.io/reaxlabs/reax-s1-fast-runtime",
-    "s1_pro_runtime": "ghcr.io/reaxlabs/reax-s1-pro-runtime",
+    "s1_pro_runtime": "ghcr.io/reaxlabs/reax-engine-ref-mammoth",
     "s1_lite_runtime": "ghcr.io/reaxlabs/reax-s1-lite-runtime",
     "s1_lite_runtime_jetson": "ghcr.io/reaxlabs/reax-s1-lite-runtime-jetson",
     "s1_cpu_runtime": "ghcr.io/reaxlabs/reax-s1-cpu-runtime",
-    "tag": "1.2.0-rc11.post7",
+    "tag": "1.2.0-rc11.post8.1-kit1",
     "digests": {
-      "miner": "sha256:61ec2f10fc84d5480a1d2cdddfa4d27ffc7f774011d2d7b1ecfcb23ecfc84085",
+      "miner": "sha256:4a492434622abfc8fc856439a9662da6649beb5a4cb9dbc6df4934a1560c73ff",
       "s1_fast_runtime": "sha256:b9965270db054b1141176b0723bba111afca78ab4d4a6139a659b509084b2ab4",
-      "s1_pro_runtime": "sha256:393082911805be27739620c37de15f79c6fbd37002a7ffd26c6763acd99551cc",
+      "s1_pro_runtime": "sha256:3080a593060542bccbdaf7cf0c66593fc182d9753b3facd50206df86d93b8588",
       "s1_lite_runtime": "sha256:73cddba2fe765586daab68795936eeba02ce0bf674019c95ad13ce194509cd9f",
       "s1_lite_runtime_jetson": "sha256:a70007ecf52e3b40ef9361a2a7ff7e2ea6ecae947a9f68d351331912e65605ef",
       "s1_cpu_runtime": "sha256:61b8551f4c1700c2a8ce04bb24d32dc23b0a698bff09cc031089bd07d7c11f7d"
     },
     "public": true,
-    "note": "Published by reaxlabs/reax-subnet docker.yml on commit eadfb336be40ebdc45f9c6a971fa518754d9e2da (release 1.2.0rc11.post7, tag v1.2.0-rc11.post7). Single-backend miner defaults (per-caller concurrency / per minute / max concurrent): s1-pro 64 / 728 / 16, s1-fast 64 / 888 / 16, pending per IP 128; s1-lite / s1-cpu 32 / 456 / 8, pending 64. From Tue 27 Oct 2026 16:00 UTC, when REAX validators switch, per-hotkey caps are s1-pro 640 decisions/s and s1-fast 2560 decisions/s. s1_cpu_runtime is a multi-arch index (linux/amd64 + linux/arm64); s1_lite_runtime_jetson is the linux/arm64 JetPack build (not yet tested on Jetson hardware)."
+    "note": "Miner: source 0db24fd9aaa113beb1fb8c883cf2ecbb3fdd86aa. s1-pro uses the measured mammoth reference engine. Nothing changes for s1-fast, s1-lite and s1-cpu runtimes: their digests remain at post7; they were not rebuilt for this kit. The shared miner image changes when update apply is requested. Jetson runtime remains unmeasured on hardware."
   },
   "source": {
     "git": "https://github.com/reaxlabs/reax-subnet",
-    "ref": "eadfb336be40ebdc45f9c6a971fa518754d9e2da",
+    "ref": "0db24fd9aaa113beb1fb8c883cf2ecbb3fdd86aa",
     "public": true,
-    "commit": "eadfb336be40ebdc45f9c6a971fa518754d9e2da"
+    "commit": "0db24fd9aaa113beb1fb8c883cf2ecbb3fdd86aa"
   },
   "pools": [
     {
@@ -80,42 +80,49 @@
     },
     {
       "id": "s1-pro",
-      "model": "Surogate Rune 26B-A4B v3 (s1-pro)",
+      "model": "baselabs/mammoth-1 (s1-pro)",
       "weights": {
-        "repo": "surogate/rune-26b-a4b-GGUF",
-        "revision": "c6b360d47895bb77bdf3805a13ee5a5557ab1921",
-        "gated": true,
-        "gate_note": "Gated on Hugging Face (auto): accept the gate with your own Hugging Face account and log in; REAX never mirrors the weights and reaxctl never asks for your token.",
-        "size_gb": 52,
+        "repo": "baselabs/mammoth-1",
+        "revision": "61cec44c281c693992e3d6ebeb44dd3402dfa186",
+        "gated": false,
+        "size_gb": 55,
         "format": "bf16 safetensors"
       },
-      "manifest_id": "5b11440bf57b5434",
-      "commitment": "reax-s1/1:s1-pro:5b11440bf57b5434",
+      "manifest_id": "3f3558e583b0a1d6",
+      "commitment": "reax-s1/1:s1-pro:3f3558e583b0a1d6",
       "gpu": {
-        "min_vram_gb": 80,
+        "min_vram_gb": 48,
         "count": 1,
         "vendor": "NVIDIA",
         "measured": [
-          "RTX PRO 6000 (96 GB)",
-          "H100 80GB"
+          "RTX PRO 6000 Blackwell Server Edition (96 GB)"
         ],
-        "unmeasured_note": "H200 and B200 are expected to work but not measured; A100 80 GB is not measured (at your own risk). Cards below 80 GB cannot hold the weights plus KV cache.",
-        "unmeasured": [
-          "A100",
-          "H200",
-          "B200"
-        ]
+        "unmeasured_note": "Only RTX PRO 6000 Blackwell Server Edition (96 GB) is measured (peak 35.2 GB). Other cards have no pinned kernel configs, must pass reax-selfcheck, and are at your own risk."
       },
       "sidecar_port": 8102,
-      "enabled_at_launch": true,
+      "enabled_at_launch": false,
       "runtime": {
-        "deterministic": true,
+        "contract": "mammoth-reference/1",
+        "minimum_kit": "0.1.9",
+        "enabled": true,
+        "host_var": "RUNTIME_HOST",
+        "port_var": "RUNTIME_PORT",
         "env": {
-          "RUNE_DETERMINISTIC": "1"
+          "RUNTIME_UDS": "",
+          "REAX_MODEL": "mammoth-1",
+          "REAX_PROFILE": "reference",
+          "CIE_LAZY_LOAD": "1",
+          "REAX_MAX_WAIT_MS": "4",
+          "FLA_CACHE_MODE": "strict",
+          "FLA_CONFIG_DIR": "/opt/reax/fla-configs/rtx-pro-6000-blackwell-server",
+          "HF_HUB_OFFLINE": "1",
+          "TRANSFORMERS_OFFLINE": "1"
         },
-        "cc_fix_env": {
-          "REAX_VLLM_DISABLE_UVA": "1"
-        }
+        "configs": "rtx-pro-6000-blackwell-server",
+        "read_only": true,
+        "tmpfs": "/tmp:rw,exec,nosuid,nodev,size=16g",
+        "shm_size": "2g",
+        "pids_limit": 4096
       }
     },
     {
@@ -188,7 +195,7 @@
     "ram_gb": 32,
     "disk_gb": {
       "s1-fast": 20,
-      "s1-pro": 80,
+      "s1-pro": 100,
       "s1-lite": 8,
       "s1-cpu": 3
     },

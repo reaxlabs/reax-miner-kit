@@ -65,6 +65,8 @@ def confidential_compute(call):
 
 
 def unmeasured_gpus(pool, gpus):
+    if (pool.get('runtime') or {}).get('contract') == 'mammoth-reference/1':
+        return sorted({gpu['name'] for gpu in gpus if 'rtx pro 6000' not in gpu['name'].lower() or 'server edition' not in gpu['name'].lower()})
     tokens = pool['gpu'].get('unmeasured') or []
     return sorted({gpu['name'] for gpu in gpus if any(t.lower() in gpu['name'].lower() for t in tokens)})
 
@@ -234,12 +236,12 @@ def diagnose(args, probe=None, host=None, release=None):
             elif pool in target and any(gpu['vram_gb'] < gpu_req['min_vram_gb'] * 0.97 for gpu in fitting) and not jetson:
                 warnings.append(pool['id'] + ': usable VRAM is slightly below the nominal minimum; accepted within 1 GB tolerance.')
             if active and pool['id'] == 's1-pro':
-                unmeasured = unmeasured_gpus(pool, fitting)
+                unmeasured = unmeasured_gpus(pool, gpus if (pool.get('runtime') or {}).get('contract') else fitting)
                 if unmeasured:
                     warnings.append('s1-pro: ' + ', '.join(unmeasured) + ' has not been measured bit-identical to the reference ('
                                     + (gpu_req.get('unmeasured_note') or 'run reaxctl selfcheck before committing') + ' Run reaxctl selfcheck before committing on chain.')
                 cc = confidential_compute(call)
-                if cc['on']:
+                if cc['on'] and (pool.get('runtime') or {}).get('cc_fix_env'):
                     warnings.append('s1-pro: confidential-compute mode is ON on this GPU. Without the UVA fix vLLM returns garbage; install with reaxctl install --pool s1-pro --cc-fix (sets REAX_VLLM_DISABLE_UVA=1 and mounts runtimes/vllm-ccfix from a reviewed subnet checkout).')
                 hf_gate = hf_gate_status(pool['weights'], getattr(args, 'check_hf', False))
                 if hf_gate['gated'] and not hf_gate['token_present']:
@@ -266,15 +268,15 @@ def diagnose(args, probe=None, host=None, release=None):
                 reasons.append('Development networks only (localnet/testnet); not available on mainnet.')
             elif hardware_ok and not active:
                 reasons.append('Development-network pool; select it with --pool {} to use it.'.format(pool['id']))
-        eligible.append({'id': pool['id'], 'ok': not reasons, 'hardware_ok': hardware_ok, 'enabled_at_launch': pool['enabled_at_launch'],
+        eligible.append({'id': pool['id'], 'ok': not reasons, 'hardware_ok': hardware_ok, 'enabled_at_launch': descriptor.pool_enabled(pool),
                          'dev_only': bool(pool.get('dev_only')), 'tier': pool.get('tier', 'gpu'),
                          'reasons': reasons if active or pool.get('dev_only') else ['Not the selected pool; listed for reference.']})
     recommended = next((i for i in ('s1-fast', 's1-lite', 's1-cpu')
                         if fits.get(i) and not (mode == 'mainnet' and next(p for p in pools if p['id'] == i).get('dev_only'))), None)
     available = any(item['ok'] for item in eligible if item['id'] in {p['id'] for p in target})  # a no-GPU host must not look ready just because s1-cpu fits
     common_blockers = [item for item in blockers if not item['id'].startswith(('disk_', 'gpu_capacity_'))]
-    launch_pools = {pool['id'] for pool in release['pools'] if pool['enabled_at_launch']}
-    ready = any(pool['ok'] and pool['id'] in launch_pools for pool in eligible) and not common_blockers and release['status']['live'] and release['status']['netuid'] is not None and release['images']['public']
+    launch_pools = {pool['id'] for pool in release['pools'] if descriptor.pool_enabled(pool)}
+    ready = any(pool['ok'] and pool['id'] in launch_pools and pool['id'] in {p['id'] for p in target} for pool in eligible) and not common_blockers and release['status']['live'] and release['status']['netuid'] is not None and release['images']['public']
     source_ok = bool(os.environ.get('REAX_SOURCE_DIR')) or bool(release['source'].get('public'))
     data = dict(host, jetson=jetson, recommended_pool=recommended, gpus=gpus, docker=docker, nvidia_container_toolkit=toolkit_ok, ntp_synchronized=ntp_ok,
                 eligible_pools=eligible, rehearsal_capable=rehearsal, rehearsal_possible=bool(rehearsal and source_ok), rehearsal_source_available=source_ok, real_mining_possible=bool(ready), blockers=blockers,
@@ -340,7 +342,7 @@ def plan(args):
         if release['status']['live']:
             if release['status']['testnet_netuid' if mode == 'testnet' else 'netuid'] is None:
                 reason = 'network_unavailable'
-            elif not selected['enabled_at_launch']:
+            elif not descriptor.pool_enabled(selected):
                 reason = 'pool_disabled'
         return step_graph(mode, pool, release['status']['live'], reason)
     return Result('plan', summary='Review the ordered setup steps before making changes.',
@@ -353,7 +355,7 @@ def plan(args):
 def register(sub):
     parser = sub.add_parser('doctor'); add_common(parser)
     parser.add_argument('--probe-ip', action='store_true')
-    parser.add_argument('--check-hf', action='store_true', help='s1-pro: ask huggingface.co whether your token can read the pinned gated revision')
+    parser.add_argument('--check-hf', action='store_true', help='check pinned weights access only when the descriptor marks them gated')
     parser.add_argument('--pool', default=None)
     parser.set_defaults(func=diagnose)
     parser = sub.add_parser('plan'); add_common(parser)

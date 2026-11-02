@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.9 — 2026-11-02
+
+- Install the active s1-pro mammoth-1 manifest with its digest-pinned engine, public weights, strict pinned FLA configs and read-only runtime contract.
+- Check config hashes before installation, isolate weights by revision, refuse the unverified Rune CC fix, and warn for every unmeasured GPU.
+- Keep other pool runtime pins at post7. The shared miner image changes only on install/update apply.
+- Fail closed for s1-pro on kit 0.1.8; upgrade the controller before applying the manifest change.
+
+
 ## Unreleased
 
 ## 0.1.8

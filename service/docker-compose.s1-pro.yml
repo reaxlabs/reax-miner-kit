@@ -1,45 +1,46 @@
-# Manual s1-pro miner (release 1.2.0rc11.post7) for operators who do not use `reaxctl install`/`reaxctl run`.
-# `reaxctl install --pool s1-pro --mode mainnet` renders an equivalent file for you.
-#
-# Prepare once (run as your own user, never as root):
-#   export REAX_UID=$(id -u) REAX_GID=$(id -g)
-#   mkdir -p secrets && openssl rand -hex 32 > secrets/runtime-token && chmod 0600 secrets/runtime-token
-#   cp miner.env.example miner.env                 # REAX_NETWORK/NETUID, wallet + hotkey names, REAX_EXTERNAL_IP/PORT
-#   hf auth login                                  # your OWN Hugging Face account, after accepting the gate for
-#                                                  # surogate/rune-26b-a4b-GGUF (the weights are never mirrored)
-#   hf download surogate/rune-26b-a4b-GGUF --revision c6b360d47895bb77bdf3805a13ee5a5557ab1921 --local-dir /srv/reax/rune-v3
-#   REAX_S1_PRO_WEIGHTS=/srv/reax/rune-v3 docker compose -f docker-compose.s1-pro.yml up -d
-#
-# The tag is mutable on GHCR: for a final release use the name@sha256:... digests from releases/current.json.
-# Confidential-compute GPUs (`nvidia-smi conf-compute -f` prints ON): also set REAX_CCFIX_DIR to the
-# runtimes/vllm-ccfix directory of a subnet checkout you have reviewed and add
-# `-f docker-compose.s1-pro-ccfix.yml` (service/docker-compose.s1-pro-ccfix.yml) to the command.
-#
-# Never publish the sidecar port 8102. The sidecar listens on loopback of the host network only; the miner binds 8091.
+# Manual mammoth-1 sidecar + miner, kit 0.1.9.
+# Use your own non-root UID/GID. Create secrets/runtime-token (0600), copy miner.env.example to miner.env.
+# Public weights: hf download baselabs/mammoth-1 --revision 61cec44c281c693992e3d6ebeb44dd3402dfa186 --local-dir /srv/reax/mammoth-1
+# Set REAX_S1_PRO_WEIGHTS=/srv/reax/mammoth-1 and REAX_FLA_CONFIGS=<kit>/configs/rtx-pro-6000-blackwell-server.
+# Verify in that config directory: sha256sum -c SHA256SUMS. Never publish port 8102.
+# No Rune CC override; it is unverified for mammoth. Run reaxctl selfcheck and require PASS before serving.
 services:
   runtime:
-    image: ghcr.io/reaxlabs/reax-s1-pro-runtime:1.2.0-rc11.post7   # pin by digest for a final release
+    image: ghcr.io/reaxlabs/reax-engine-ref-mammoth@sha256:3080a593060542bccbdaf7cf0c66593fc182d9753b3facd50206df86d93b8588
     user: "${REAX_UID:?set REAX_UID=$(id -u)}:${REAX_GID:?set REAX_GID=$(id -g)}"
     init: true
     network_mode: host
     restart: unless-stopped
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: ["/tmp:rw,exec,nosuid,nodev,size=16g"]
+    shm_size: "2g"
+    pids_limit: 4096
     environment:
       S1M_INTERNAL_TOKEN_FILE: /run/runtime-token
-      RUNE_HOST: 127.0.0.1          # loopback only
-      RUNE_PORT: "8102"
-      RUNE_DETERMINISTIC: "1"       # required: stock vLLM and FP8 builds fail the reference check
+      RUNTIME_HOST: 127.0.0.1
+      RUNTIME_PORT: "8102"
+      RUNTIME_UDS: ""
+      REAX_MODEL: mammoth-1
+      REAX_PROFILE: reference
+      CIE_LAZY_LOAD: "1"
+      REAX_MAX_WAIT_MS: "4"
+      FLA_CACHE_MODE: strict
+      FLA_CONFIG_DIR: /opt/reax/fla-configs/rtx-pro-6000-blackwell-server
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
     volumes:
       - ./secrets/runtime-token:/run/runtime-token:ro
       - ${REAX_S1_PRO_WEIGHTS:?set REAX_S1_PRO_WEIGHTS to the hf download --local-dir directory}:/model:ro
+      - ${REAX_FLA_CONFIGS:?set REAX_FLA_CONFIGS to the verified bundled configs}:/opt/reax/fla-configs/rtx-pro-6000-blackwell-server:ro
     deploy:
       resources:
         reservations:
           devices: [{driver: nvidia, count: 1, capabilities: [gpu]}]
     logging: {driver: json-file, options: {max-size: "50m", max-file: "5"}}
   miner:
-    image: ghcr.io/reaxlabs/reax-miner:1.2.0-rc11.post7
+    image: ghcr.io/reaxlabs/reax-miner@sha256:4a492434622abfc8fc856439a9662da6649beb5a4cb9dbc6df4934a1560c73ff
     user: "${REAX_UID:?set REAX_UID=$(id -u)}:${REAX_GID:?set REAX_GID=$(id -g)}"
     init: true
     network_mode: host
@@ -59,7 +60,7 @@ services:
       REAX_MAX_PENDING_PER_IP: "128"
       REAX_S1_PRO_RUNTIME_URL: http://127.0.0.1:8102
       REAX_RUNTIME_TOKEN_FILE: /run/reax-runtime-token
-      REAX_PUBLISH_COMMITMENT: "1"   # reax-s1/1:s1-pro:5b11440bf57b5434
+      REAX_PUBLISH_COMMITMENT: "1"   # reax-s1/1:s1-pro:3f3558e583b0a1d6
     ulimits:
       nofile: {soft: 65536, hard: 65536}
     volumes:

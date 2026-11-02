@@ -24,7 +24,7 @@ class MultiModelTemplateTest(unittest.TestCase):
     def test_images_follow_the_bundled_release_tag(self):
         tag = self.value['images']['tag']
         for key in ('miner', 's1_lite_runtime', 's1_cpu_runtime'):
-            self.assertIn('image: %s:%s' % (self.value['images'][key], tag), self.compose)
+            self.assertIn('image: %s@%s' % (self.value['images'][key], self.value['images']['digests'][key]), self.compose)
 
     def test_commitment_comment_matches_the_descriptor(self):
         lite, cpu = self.pools['s1-lite'], self.pools['s1-cpu']
@@ -83,7 +83,7 @@ class MultiModelTemplateTest(unittest.TestCase):
 class BundledDescriptorTest(unittest.TestCase):
     def test_bundled_copy_is_live_so_the_offline_fallback_does_not_block_mainnet(self):
         value = descriptor.validate(bundled())
-        self.assertEqual(value['release_id'], '1.2.0rc11.post7')
+        self.assertEqual(value['release_id'], '1.2.0rc11.post8.1-kit1')
         self.assertTrue(value['status']['live'])
         self.assertEqual((value['status']['launch_status'], value['status']['network'], value['status']['netuid']), ('live', 'finney', 92))
         self.assertIsNone(install.gate(value, 'mainnet', confirm=True))

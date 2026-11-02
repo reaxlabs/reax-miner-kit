@@ -83,12 +83,10 @@ README's hardening section for offline refresh, locking/pruning guidance and RPC
 
 ## Small-GPU, Jetson and CPU pools (s1-lite, s1-cpu)
 
-Release 1.2.0rc1 describes two more pools next to s1-fast and s1-pro, both `enabled_at_launch: true`.
+The descriptor includes two smaller pools next to s1-fast and s1-pro, both `enabled_at_launch: true`.
 `install` writes `REAX_FEATURE_TIERED_POOLS=1` into `miner.env` for them; the miner release you run
 must accept these pools on your network (descriptors may also mark a pool `dev_only: true`, which
-limits it to localnet/testnet and makes `install` refuse mainnet). The runtime images are not
-published yet (`sha256:TBD-*` placeholders), so a real install needs a local build via
-`REAX_SOURCE_DIR`.
+limits it to localnet/testnet and makes `install` refuse mainnet). Their public runtime images remain pinned at their post7 digests in kit 0.1.9; no local build is required.
 
 | Pool | Model | Hardware | Sidecar port | Disk |
 | --- | --- | --- | --- | --- |
@@ -103,3 +101,6 @@ checks s1-fast, and reports `hardware_ok` for each pool and a `recommended_pool`
 else `s1-cpu`). Weights are fetched with `weights.files`, so only the single GGUF file
 is downloaded. On a Jetson the compose file uses `runtime: nvidia` and the
 `s1_lite_runtime_jetson` image; on x86 it reserves the NVIDIA device.
+
+
+Kit 0.1.9: s1-pro uses mammoth-1 with manifest `3f3558e583b0a1d6` and pinned FLA configs. See [S1-PRO.md](S1-PRO.md). Runtime REAX_MODEL is mammoth-1; miner REAX_MODEL remains s1-pro. The old Rune CC fix is refused. Other pool runtime pins are unchanged; explicit update apply replaces the shared miner image.

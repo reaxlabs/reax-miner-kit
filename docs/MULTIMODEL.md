@@ -1,4 +1,4 @@
-# Several models on one hotkey, and a competition entry next to it (release 1.2.0rc11.post7)
+# Several models on one hotkey, and a competition entry next to it (kit 0.1.9)
 
 From chain block **9331987** (about 13:00 UTC on 21 October 2026) one hotkey can
 
@@ -40,7 +40,7 @@ the pool you installed.
   | s1-lite / s1-cpu | 32 | 456 | 8 | 64 |
 
   `REAX_MAX_PENDING_PER_IP` is shared across the miner and defaults to twice the largest per-model caller concurrency.
-  These are the 1.2.0rc11.post7 single-backend defaults; several backends can raise them automatically.
+  These single-backend defaults were introduced in 1.2.0rc11.post7 and remain unchanged; several backends can raise them automatically.
   From Tue 27 Oct 2026 16:00 UTC, when REAX validators switch, the per-hotkey caps are 640 decisions/s for s1-pro
   and 2560 decisions/s for s1-fast. Update the pinned images and remove old lower overrides before that switch.
 * `GET /health` on the miner port returns `{"protocol": "reax-s1/1", "version": ..., "models": {"<model>": "<manifest_id>", ...}}`.
@@ -118,3 +118,6 @@ $C --entrypoint reax-commit miner withdraw competition --dry-run                
 * Do not set `REAX_FORCE_MULTIROLE`, pass `--replace-all`, or write a competition element without the person's explicit approval of
   the exact element text. Run `reax-commit ... --dry-run` and show the fields first.
 * A commitment write is signed with the hotkey; the coldkey is never involved and never needed. Do not mount a coldkey into a container.
+
+
+Kit 0.1.9: s1-pro uses mammoth-1 with manifest `3f3558e583b0a1d6` and pinned FLA configs. See [S1-PRO.md](S1-PRO.md). Runtime REAX_MODEL is mammoth-1; miner REAX_MODEL remains s1-pro. The old Rune CC fix is refused. Other pool runtime pins are unchanged; explicit update apply replaces the shared miner image.

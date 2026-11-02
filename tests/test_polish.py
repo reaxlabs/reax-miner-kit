@@ -70,6 +70,7 @@ class PolishTests(unittest.TestCase):
         release['status'].update(live=True, netuid=1, testnet_netuid=None)
         release['images'].update(public=False)
         next(p for p in release['pools'] if p['id'] == 's1-pro')['enabled_at_launch'] = False
+        next(p for p in release['pools'] if p['id'] == 's1-pro')['runtime']['enabled'] = False
         with patch('reaxlib.cmd_doctor.descriptor.load', return_value=release), patch('reaxlib.cmd_doctor.diagnose') as fake:
             fake.return_value.data = {}
             result = plan(argparse.Namespace(home='/nonexistent', mode='testnet', pool='s1-fast'))
