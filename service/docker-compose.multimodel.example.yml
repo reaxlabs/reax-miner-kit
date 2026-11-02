@@ -1,4 +1,4 @@
-# Example: one hotkey serving two models (s1-lite + s1-cpu), release 1.2.0rc11.post7. Walk-through: docs/MULTIMODEL.md.
+# Example: one hotkey serving two models (s1-lite + s1-cpu), kit 0.1.9 (runtime pins retained at post7). Walk-through: docs/MULTIMODEL.md.
 # Several models on one hotkey count from chain block 9331987 (about 13:00 UTC on 21 Oct 2026): start this stack after that
 # block (before it the miner refuses to start with two or more models). `reaxctl install` does NOT render this file.
 #
