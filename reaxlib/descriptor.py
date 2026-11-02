@@ -41,6 +41,21 @@ FILE_NAME = re.compile(r'[A-Za-z0-9_][A-Za-z0-9_.-]*')
 
 def validate_pool_extras(pool):
     """Strict checks for the optional tiered-pool fields; absent fields keep the s1-fast/s1-pro meaning."""
+    runtime = pool.get('runtime') or {}
+    if runtime.get('contract'):
+        if runtime['contract'] != 'mammoth-reference/1':
+            raise ValueError('Unsupported runtime contract; update the kit.')
+        fixed = {'minimum_kit': '0.1.9', 'enabled': True, 'host_var': 'RUNTIME_HOST', 'port_var': 'RUNTIME_PORT',
+                 'configs': 'rtx-pro-6000-blackwell-server', 'read_only': True,
+                 'tmpfs': '/tmp:rw,exec,nosuid,nodev,size=16g', 'shm_size': '2g', 'pids_limit': 4096}
+        if any(runtime.get(k) != v for k, v in fixed.items()) or 'cc_fix_env' in runtime:
+            raise ValueError('Invalid mammoth reference contract; update the kit.')
+        required = {'REAX_MODEL': 'mammoth-1', 'RUNTIME_UDS': '', 'REAX_PROFILE': 'reference', 'CIE_LAZY_LOAD': '1',
+                    'REAX_MAX_WAIT_MS': '4', 'FLA_CACHE_MODE': 'strict',
+                    'FLA_CONFIG_DIR': '/opt/reax/fla-configs/rtx-pro-6000-blackwell-server',
+                    'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1'}
+        if runtime.get('env') != required:
+            raise ValueError('Invalid mammoth reference environment; update the kit.')
     if 'tier' in pool and pool['tier'] not in ('gpu', 'small', 'cpu'):
         raise ValueError('invalid pool tier')
     if 'arch' in pool:
@@ -63,6 +78,11 @@ def validate_pool_extras(pool):
         if (not isinstance(files, list) or not files or len(set(map(str, files))) != len(files)
                 or any(not isinstance(f, str) or not FILE_NAME.fullmatch(f) or f.endswith('.') for f in files)):
             raise ValueError('invalid weights file list')
+
+
+def pool_enabled(pool):
+    runtime = pool.get('runtime') or {}
+    return pool.get('enabled_at_launch', False) or (runtime.get('contract') == 'mammoth-reference/1' and runtime.get('enabled') is True)
 
 
 def validate(value):

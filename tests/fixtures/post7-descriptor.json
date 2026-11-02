@@ -1,0 +1,230 @@
+{
+  "schema": "reax-release/1",
+  "release_id": "1.2.0rc11.post7",
+  "updated": "2026-10-26",
+  "status": {
+    "launch_status": "live",
+    "live": true,
+    "netuid": 92,
+    "network": "finney",
+    "testnet_netuid": null,
+    "notes": "Start with a free local-chain practice run using test TAO before real registration. This check does not enable real mining; verify runtime and public ingress.",
+    "chain": {
+      "netuid": 92,
+      "network": "finney",
+      "genesis_hash": "0x2f0555cc76fc2840a25a6ea3b9637146806f1f44b090c175ffde2a7e5ab36c03",
+      "block": 9367627,
+      "block_hash": "0xd9cb0516bbb07e9208c353be6257b0875cb025828644f35b085042ffe82daeb0",
+      "block_time": "2026-10-26T11:45:12+00:00",
+      "checked_at": "2026-10-26T11:45:48.992671+00:00",
+      "sdk": "substrate-interface 1.8.1",
+      "exists": true,
+      "owner": "5GMxpAvB9iJkDtNDELhVn8GmbBz5XChnWcLaThWTJ38QmU6B",
+      "subtoken_enabled": true,
+      "first_emission_block": 9280309,
+      "subnet_emission_enabled": true,
+      "registration_allowed": true
+    }
+  },
+  "minimum_release": "1.1.0rc2",
+  "images": {
+    "miner": "ghcr.io/reaxlabs/reax-miner",
+    "s1_fast_runtime": "ghcr.io/reaxlabs/reax-s1-fast-runtime",
+    "s1_pro_runtime": "ghcr.io/reaxlabs/reax-s1-pro-runtime",
+    "s1_lite_runtime": "ghcr.io/reaxlabs/reax-s1-lite-runtime",
+    "s1_lite_runtime_jetson": "ghcr.io/reaxlabs/reax-s1-lite-runtime-jetson",
+    "s1_cpu_runtime": "ghcr.io/reaxlabs/reax-s1-cpu-runtime",
+    "tag": "1.2.0-rc11.post7",
+    "digests": {
+      "miner": "sha256:61ec2f10fc84d5480a1d2cdddfa4d27ffc7f774011d2d7b1ecfcb23ecfc84085",
+      "s1_fast_runtime": "sha256:b9965270db054b1141176b0723bba111afca78ab4d4a6139a659b509084b2ab4",
+      "s1_pro_runtime": "sha256:393082911805be27739620c37de15f79c6fbd37002a7ffd26c6763acd99551cc",
+      "s1_lite_runtime": "sha256:73cddba2fe765586daab68795936eeba02ce0bf674019c95ad13ce194509cd9f",
+      "s1_lite_runtime_jetson": "sha256:a70007ecf52e3b40ef9361a2a7ff7e2ea6ecae947a9f68d351331912e65605ef",
+      "s1_cpu_runtime": "sha256:61b8551f4c1700c2a8ce04bb24d32dc23b0a698bff09cc031089bd07d7c11f7d"
+    },
+    "public": true,
+    "note": "Published by reaxlabs/reax-subnet docker.yml on commit eadfb336be40ebdc45f9c6a971fa518754d9e2da (release 1.2.0rc11.post7, tag v1.2.0-rc11.post7). Single-backend miner defaults (per-caller concurrency / per minute / max concurrent): s1-pro 64 / 728 / 16, s1-fast 64 / 888 / 16, pending per IP 128; s1-lite / s1-cpu 32 / 456 / 8, pending 64. From Tue 27 Oct 2026 16:00 UTC, when REAX validators switch, per-hotkey caps are s1-pro 640 decisions/s and s1-fast 2560 decisions/s. s1_cpu_runtime is a multi-arch index (linux/amd64 + linux/arm64); s1_lite_runtime_jetson is the linux/arm64 JetPack build (not yet tested on Jetson hardware)."
+  },
+  "source": {
+    "git": "https://github.com/reaxlabs/reax-subnet",
+    "ref": "eadfb336be40ebdc45f9c6a971fa518754d9e2da",
+    "public": true,
+    "commit": "eadfb336be40ebdc45f9c6a971fa518754d9e2da"
+  },
+  "pools": [
+    {
+      "id": "s1-fast",
+      "model": "Plumb-4B (s1-fast)",
+      "weights": {
+        "repo": "crh225/plumb-4b",
+        "revision": "55de037801a8a9b9de3db5c0e16cef86210c2186",
+        "gated": false,
+        "size_gb": 9
+      },
+      "manifest_id": "ff6e01b983d48024",
+      "commitment": "reax-s1/1:s1-fast:ff6e01b983d48024",
+      "gpu": {
+        "min_vram_gb": 24,
+        "count": 1,
+        "vendor": "NVIDIA",
+        "measured": [
+          "RTX 4090",
+          "RTX PRO 6000 Blackwell",
+          "H100 80GB"
+        ],
+        "unmeasured_note": "Other cards: run scripts/calibration_s1 before serving."
+      },
+      "sidecar_port": 8101,
+      "enabled_at_launch": true
+    },
+    {
+      "id": "s1-pro",
+      "model": "Surogate Rune 26B-A4B v3 (s1-pro)",
+      "weights": {
+        "repo": "surogate/rune-26b-a4b-GGUF",
+        "revision": "c6b360d47895bb77bdf3805a13ee5a5557ab1921",
+        "gated": true,
+        "gate_note": "Gated on Hugging Face (auto): accept the gate with your own Hugging Face account and log in; REAX never mirrors the weights and reaxctl never asks for your token.",
+        "size_gb": 52,
+        "format": "bf16 safetensors"
+      },
+      "manifest_id": "5b11440bf57b5434",
+      "commitment": "reax-s1/1:s1-pro:5b11440bf57b5434",
+      "gpu": {
+        "min_vram_gb": 80,
+        "count": 1,
+        "vendor": "NVIDIA",
+        "measured": [
+          "RTX PRO 6000 (96 GB)",
+          "H100 80GB"
+        ],
+        "unmeasured_note": "H200 and B200 are expected to work but not measured; A100 80 GB is not measured (at your own risk). Cards below 80 GB cannot hold the weights plus KV cache.",
+        "unmeasured": [
+          "A100",
+          "H200",
+          "B200"
+        ]
+      },
+      "sidecar_port": 8102,
+      "enabled_at_launch": true,
+      "runtime": {
+        "deterministic": true,
+        "env": {
+          "RUNE_DETERMINISTIC": "1"
+        },
+        "cc_fix_env": {
+          "REAX_VLLM_DISABLE_UVA": "1"
+        }
+      }
+    },
+    {
+      "id": "s1-lite",
+      "model": "Plumb-4B v5 GGUF Q8_0 (s1-lite)",
+      "weights": {
+        "repo": "crh225/plumb-4b-GGUF",
+        "revision": "71c1c57e523219124f7be9c486d475d19891185f",
+        "gated": false,
+        "size_gb": 4.48,
+        "files": [
+          "plumb-4b-v5-Q8_0.gguf"
+        ]
+      },
+      "manifest_id": "8c7297e14e5e89bf",
+      "commitment": "reax-s1/1:s1-lite:8c7297e14e5e89bf",
+      "gpu": {
+        "min_vram_gb": 8,
+        "count": 1,
+        "vendor": "NVIDIA",
+        "measured": [],
+        "unmeasured_note": "NVIDIA GPU with 8 GB or more, or a Jetson Orin (JetPack 6) with 8 GB unified memory; not yet calibrated on real hardware."
+      },
+      "sidecar_port": 8103,
+      "enabled_at_launch": true,
+      "tier": "small",
+      "arch": [
+        "x86_64",
+        "aarch64"
+      ],
+      "accelerator": "nvidia",
+      "jetson": true,
+      "min_ram_gb": 8,
+      "min_cpu_cores": 4
+    },
+    {
+      "id": "s1-cpu",
+      "model": "Gutsy 0.8B v0.4 GGUF Q8_0 (s1-cpu)",
+      "weights": {
+        "repo": "kouhxp/gutsy",
+        "revision": "f9995fe26a337f1a4ea3f1a5ed38c9799e5a8f63",
+        "gated": false,
+        "size_gb": 0.81,
+        "files": [
+          "gutsy-0.8b-v04-q8_0.gguf"
+        ]
+      },
+      "manifest_id": "f2c9981f0766f2a6",
+      "commitment": "reax-s1/1:s1-cpu:f2c9981f0766f2a6",
+      "gpu": {
+        "min_vram_gb": 0,
+        "count": 0,
+        "vendor": "none"
+      },
+      "sidecar_port": 8104,
+      "enabled_at_launch": true,
+      "tier": "cpu",
+      "arch": [
+        "x86_64",
+        "aarch64"
+      ],
+      "accelerator": "none",
+      "jetson": false,
+      "min_ram_gb": 4,
+      "min_cpu_cores": 4
+    }
+  ],
+  "requirements": {
+    "cpu_cores": 4,
+    "ram_gb": 32,
+    "disk_gb": {
+      "s1-fast": 20,
+      "s1-pro": 80,
+      "s1-lite": 8,
+      "s1-cpu": 3
+    },
+    "driver_min": "R580 (CUDA 13)",
+    "python_min": "3.10",
+    "open_ports": [
+      8091
+    ],
+    "never_publish_ports": [
+      8101,
+      8102,
+      8103,
+      8104,
+      8000
+    ],
+    "os": "Linux x86_64 (also WSL2 with NVIDIA GPU passthrough)",
+    "ntp_required": true
+  },
+  "tools": {
+    "bittensor": "11.1.0",
+    "typer": "<0.27.2",
+    "huggingface_hub": ">=0.25"
+  },
+  "links": {
+    "entry": "https://reax.dev/mine/",
+    "guide": "https://reax.dev/mine/",
+    "wallet": "https://reax.dev/wallet/",
+    "register": "https://reax.dev/register/",
+    "faq": "https://reax.dev/miner-faq/",
+    "project": "https://reax.co/",
+    "competitions": "https://reax.co/competitions",
+    "competitions_doc": "https://github.com/reaxlabs/reax-subnet/blob/release/1.2-rc/docs/COMPETITIONS.md"
+  },
+  "update": {
+    "channel": "stable",
+    "auto_safe": true,
+    "manifest_change_requires_confirm": true
+  }
+}

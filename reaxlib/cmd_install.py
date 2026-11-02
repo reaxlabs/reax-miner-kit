@@ -11,7 +11,7 @@ import tarfile
 import time
 from .cli import add_common
 from .result import Result
-from .descriptor import PLACEHOLDER_DIGEST
+from .descriptor import PLACEHOLDER_DIGEST, pool_enabled
 
 
 def runner(cmd, timeout=120, env=None, spawn=False, log=None, foreground=False):
@@ -201,6 +201,33 @@ SIDECAR_PORTS = (8101, 8102, 8103, 8104, 8000)
 GGUF_POOLS = ('s1-lite', 's1-cpu')
 
 
+def weights_dir(home, pool):
+    if (pool.get('runtime') or {}).get('contract'):
+        return home / 'weights' / pool['id'] / pool['weights']['revision']
+    return home / 'weights' / pool['id']
+
+
+def verified_configs(runtime):
+    import hashlib
+    name = runtime.get('configs')
+    if name != 'rtx-pro-6000-blackwell-server':
+        raise ValueError('Unknown pinned FLA configs; update the kit.')
+    directory = pathlib.Path(__file__).resolve().parent.parent / 'configs' / name
+    sums = directory / 'SHA256SUMS'
+    if not sums.is_file() or sums.is_symlink():
+        raise ValueError('Pinned FLA configs missing; reinstall kit 0.1.9 or newer.')
+    if hashlib.sha256(sums.read_bytes()).hexdigest() != '2afd76102700d3a26673cd4bcc4372bbf8cf0bc548580aa5da6b4560eab0fc9d':
+        raise ValueError('Pinned FLA checksum list differs; reinstall the kit.')
+    for line in sums.read_text().splitlines():
+        digest, filename = line.split()
+        if not re.fullmatch(r'[A-Za-z0-9_.-]+', filename) or filename in ('.', '..'):
+            raise ValueError('Invalid pinned FLA config filename.')
+        path = directory / filename
+        if path.is_symlink() or not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+            raise ValueError('Pinned FLA config checksum failed; reinstall the kit.')
+    return directory
+
+
 def runtime_image_key(pool, jetson=False):
     base = pool['id'].replace('-', '_') + '_runtime'
     return base + '_jetson' if jetson and pool.get('jetson') else base
@@ -245,7 +272,12 @@ def render(home, d, config, source=None):
         if name == 'runtime':
             runtime_env = ['      ' + k + ': ' + q(v) for k, v in sorted(pool_runtime_env(pool, config).items())]
             ccfix = ['      - ' + q(config['ccfix_dir'] + ':' + CCFIX_MOUNT + ':ro')] if pool_ccfix(pool, config) else []
-            host_var, port_var = ('RUNTIME_HOST', 'RUNTIME_PORT') if pool['id'] == 's1-fast' or gguf else ('RUNE_HOST', 'RUNE_PORT')
+            runtime = pool.get('runtime') or {}
+            host_var, port_var = (runtime.get('host_var', 'RUNTIME_HOST'), runtime.get('port_var', 'RUNTIME_PORT')) if runtime.get('contract') else (('RUNTIME_HOST', 'RUNTIME_PORT') if pool['id'] == 's1-fast' or gguf else ('RUNE_HOST', 'RUNE_PORT'))
+            if runtime.get('contract') == 'mammoth-reference/1':
+                configs = verified_configs(runtime)
+                services += ['    read_only: true', '    tmpfs:', '      - ' + q(runtime['tmpfs']), '    shm_size: ' + q(runtime['shm_size']), '    pids_limit: ' + str(runtime['pids_limit'])]
+                ccfix += ['      - ' + q(str(configs) + ':' + runtime['env']['FLA_CONFIG_DIR'] + ':ro')]
             if on_jetson:
                 services += ['    runtime: nvidia']  # Jetson exposes its integrated GPU through the nvidia runtime, not a device reservation
             services += ['    environment:', '      S1M_INTERNAL_TOKEN_FILE: /run/runtime-token',
@@ -255,7 +287,7 @@ def render(home, d, config, source=None):
                 services += ['      GGUF_MODEL_DIR: /model', '      GGUF_N_GPU_LAYERS: ' + q('-1' if nvidia else '0')]
             services += runtime_env
             services += ['    volumes:', '      - ' + q(token + ':/run/runtime-token:ro'),
-                         '      - ' + q(str(home / 'weights' / pool['id']) + ':/model:ro')] + ccfix
+                         '      - ' + q(str(weights_dir(home, pool)) + ':/model:ro')] + ccfix
             if nvidia and not on_jetson:
                 services += ['    deploy:', '      resources:', '        reservations:',
                              '          devices:', '            - driver: nvidia', '              count: 1', '              capabilities: [gpu]']
@@ -308,8 +340,14 @@ def install(args):
         return Result('install', 'blocked', 'Pool {} is a development-network pool and cannot be installed on mainnet; use --mode localnet or testnet, or choose a launch pool.'.format(name), exit_code=12)
     if 'manifest_id' in config and config['manifest_id'] != pool['manifest_id'] and not getattr(args, 'accept_manifest_change', False):
         return human('install', 'Approve the manifest change.', 'A changed manifest resets the miner score.', ['Review and repeat with --accept-manifest-change.'])
-    if mode != 'localnet' and not pool.get('enabled_at_launch', False) and not (pool.get('dev_only') and mode == 'testnet'):
+    if mode != 'localnet' and not pool_enabled(pool) and not (pool.get('dev_only') and mode == 'testnet'):
         return Result('install', 'blocked', 'This pool is not enabled.', exit_code=12)
+    if getattr(args, 'cc_fix', False) and not (pool.get('runtime') or {}).get('cc_fix_env'):
+        return Result('install', 'blocked', '--cc-fix is unverified for mammoth-1; remove it and use the pinned reference contract.', exit_code=12)
+    if (pool.get('runtime') or {}).get('contract') == 'mammoth-reference/1':
+        verified_configs(pool['runtime'])
+        config.pop('cc_fix', None)
+        config.pop('ccfix_dir', None)
     ancestor = home
     while not ancestor.exists():
         ancestor = ancestor.parent
@@ -340,7 +378,7 @@ def install(args):
     config.update(mode=mode, pool=name, release_id=d['release_id'], manifest_id=pool['manifest_id'])
     if getattr(args, 'cc_fix', False):
         if not (pool.get('runtime') or {}).get('cc_fix_env'):
-            return Result('install', 'blocked', '--cc-fix only applies to a pool whose descriptor defines it (s1-pro).', exit_code=12)
+            return Result('install', 'blocked', '--cc-fix is unverified for mammoth-1 and refused; it only applies to the old Rune vLLM runtime.', exit_code=12)
         checkout = os.environ.get('REAX_SOURCE_DIR') or config.get('source_dir')
         fixdir = pathlib.Path(checkout).expanduser().resolve() / 'runtimes' / 'vllm-ccfix' if checkout else None
         if not fixdir or not (fixdir / 'sitecustomize.py').is_file() or fixdir.is_symlink():
@@ -374,14 +412,13 @@ def install(args):
     finally:
         os.close(fd)
     (home / 'logs').mkdir(exist_ok=True)
-    write_config(home, config)
     if mode != 'localnet':
         render(home, d, config, source)
         rc, _, _ = runner(['docker', 'compose', '-f', str(home / 'compose.yml'), 'pull' if d['images'].get('public') else 'build'], timeout=1800)
         if rc:
             return Result('install', 'error', 'Image download or build failed.', exit_code=13)
         mark(home, 'images', {'images': d['images']})
-        target = home / 'weights' / name
+        target = weights_dir(home, pool)
         target.mkdir(parents=True, exist_ok=True)
         script = 'from huggingface_hub import snapshot_download; import sys; snapshot_download(repo_id=sys.argv[1],revision=sys.argv[2],local_dir=sys.argv[3],allow_patterns=sys.argv[4:] or None)'
         # weights.files limits the download to those exact files (GGUF repos hold one file; never pull the rest)
@@ -396,6 +433,7 @@ def install(args):
                              'https://huggingface.co/' + pool['weights']['repo'])
             return Result('install', 'error', 'Pinned weights download failed; retry install.', data={'detail': detail(hf_err)}, exit_code=13)
         mark(home, 'weights', pool['weights'])
+    write_config(home, config)
     mark(home, 'install', {'release_id': d['release_id'], 'mode': mode})
     return Result('install', summary='Installation prepared.', data={'home': str(home), 'mode': mode, 'token_path': str(secret)},
                   next=[{'command': 'reaxctl localnet up' if mode == 'localnet' else 'reaxctl wallet status', 'why': 'Continue setup.'}])
@@ -406,6 +444,6 @@ def register(sub):
     add_common(p)
     p.add_argument('--pool', default=None)
     p.add_argument('--accept-manifest-change', action='store_true')
-    p.add_argument('--cc-fix', action='store_true', help='s1-pro on confidential-compute GPUs: mount the UVA fix (needs a reviewed subnet checkout)')
+    p.add_argument('--cc-fix', action='store_true', help='legacy Rune-only UVA fix; refused for mammoth-1')
     p.add_argument('--confirm-mainnet', action='store_true')
     p.set_defaults(func=install)

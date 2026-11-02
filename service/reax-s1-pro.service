@@ -11,8 +11,8 @@ Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=@WORKDIR@
 Environment=REAX_S1_PRO_WEIGHTS=@WEIGHTS@ REAX_UID=@UID@ REAX_GID=@GID@
-# Confidential-compute GPUs: append "-f docker-compose.s1-pro-ccfix.yml" to both compose lines and add
-# Environment=REAX_CCFIX_DIR=<runtimes/vllm-ccfix of a reviewed subnet checkout>
+Environment=REAX_FLA_CONFIGS=@FLA_CONFIGS@
+# Verify the bundled FLA config checksums before starting. The Rune CC fix is unverified here.
 ExecStart=/usr/bin/docker compose -f docker-compose.s1-pro.yml up -d
 ExecStop=/usr/bin/docker compose -f docker-compose.s1-pro.yml down
 TimeoutStartSec=1800

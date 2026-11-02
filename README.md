@@ -80,7 +80,7 @@ Exit codes: 0 success, 2 usage, 10 unmet requirement, 11 human action, 12 not av
 - **testnet** requires a live descriptor and a testnet netuid. Registration remains a human action using test TAO.
 - **mainnet** requires a live descriptor and netuid, plus human-approved `--confirm-mainnet` during installation. Registration and any payment happen in the person's own wallet.
 
-Real mining requires Linux x86_64 with NVIDIA, driver R580+ and the NVIDIA Docker runtime. WSL2 support is conditional on NVIDIA GPU passthrough, compatible drivers and Docker access. macOS is supported as a controller only; its GPU cannot mine with this kit. AMD GPUs are unsupported. `doctor` checks the descriptor's pool requirements; the REAX reference models are s1-fast (Plumb-4B, 24 GB+) and s1-pro (Surogate Rune 26B-A4B v3, 80–96 GB class). Both pools are enabled in release 1.2.0rc1; see the [s1-pro quickstart](#s1-pro-quickstart).
+Real mining requires Linux x86_64 with NVIDIA, driver R580+ and the NVIDIA Docker runtime. WSL2 support is conditional on NVIDIA GPU passthrough, compatible drivers and Docker access. macOS is supported as a controller only; its GPU cannot mine with this kit. AMD GPUs are unsupported. `doctor` checks the descriptor's pool requirements; the REAX reference models are s1-fast (Plumb-4B, 24 GB+) and s1-pro (mammoth-1, 48 GB+). Both pools are supported by kit 0.1.9; see the [s1-pro quickstart](#s1-pro-quickstart).
 
 ## s1-pro quickstart
 
@@ -88,19 +88,12 @@ Release 1.2.0rc1 turns the s1-pro pool on (inference split inside the GPU tier: 
 
 The same release also describes two smaller pools: **s1-lite** (8 GB+ NVIDIA GPU or Jetson Orin with JetPack 6; sidecar port 8103) and **s1-cpu** (no GPU, x86_64 or aarch64; sidecar port 8104). Choose one with `reaxctl doctor --pool s1-lite` / `--pool s1-cpu` and `reaxctl install --pool …`; `doctor` without `--pool` checks s1-fast and lists `recommended_pool` for your hardware. Details: `docs/RUN.md`.
 
-- **Hardware:** one NVIDIA GPU with 80–96 GB, driver R580+, about 80 GB free disk (52 GB bf16 weights plus the runtime image). Measured bit-identical: RTX PRO 6000 96 GB and H100 80 GB. H200/B200 are expected to work but are not measured; A100 80 GB is not measured (at your own risk). `doctor --pool s1-pro` warns about unmeasured cards.
-- **Weights are gated on Hugging Face.** Accept the gate for `surogate/rune-26b-a4b-GGUF` with your own account and run `hf auth login`. REAX never mirrors the weights and `reaxctl` never reads or prints your token. `doctor --pool s1-pro --check-hf` asks huggingface.co whether your token can read the pinned revision (token presence is always checked locally).
-- **Deterministic runtime only:** the runtime image (`reax-s1-pro-runtime`, deterministic vLLM 0.30.0) runs with `RUNE_DETERMINISTIC=1`. Stock vLLM and FP8 builds fail the reference check.
-- **Confidential-compute GPUs:** if `nvidia-smi conf-compute -f` prints ON, `doctor` tells you to enable the UVA fix: `install --pool s1-pro --cc-fix` (needs `REAX_SOURCE_DIR` pointing to a reviewed subnet checkout; it mounts `runtimes/vllm-ccfix` read-only and sets `REAX_VLLM_DISABLE_UVA=1`).
+- **Hardware:** one NVIDIA GPU with at least 48 GB, R580+ and 100 GB free disk (55 GB weights + about 30 GB image + headroom). Only RTX PRO 6000 Blackwell Server Edition (96 GB) is measured; other cards have no pinned kernel configs and must pass selfcheck, at your own risk.
+- **Weights:** public MIT baselabs/mammoth-1; no HF gate or login.
+- **Install:** use kit 0.1.9 and run `./reaxctl install --pool s1-pro --mode mainnet --confirm-mainnet` after approval.
+- **Upgrade from Rune:** review the score-resetting manifest change, then `./reaxctl update apply --accept-manifest-change`. Run `./reaxctl selfcheck` and require PASS before serving. The Rune `--cc-fix` is refused.
 
-```sh
-./reaxctl doctor --pool s1-pro --check-hf
-./reaxctl plan --mode mainnet --pool s1-pro
-./reaxctl install --pool s1-pro --mode mainnet --confirm-mainnet   # after human approval; add --cc-fix on CC GPUs
-./reaxctl selfcheck          # must pass before you register
-```
-
-The runtime sidecar listens on loopback port 8102 only; never publish it. Service templates for running the s1-pro runtime and miner without `reaxctl run` are in [service/](service/); the full walk-through is [docs/S1-PRO.md](docs/S1-PRO.md). The commitment is `reax-s1/1:s1-pro:5b11440bf57b5434`.
+The runtime sidecar listens on loopback port 8102 only; never publish it. Service templates for running the s1-pro runtime and miner without `reaxctl run` are in [service/](service/); the full walk-through is [docs/S1-PRO.md](docs/S1-PRO.md). The commitment is `reax-s1/1:s1-pro:3f3558e583b0a1d6`.
 
 ## Several models and a competition entry on one hotkey (from block 9331987)
 
@@ -194,3 +187,5 @@ them. Rollback covers configuration/compose/env only, not weights, source or ven
 nodes still use `--rpc-cors=all` and default RPC methods; use only an isolated trusted network
 and close the rehearsal RPC/P2P port range to untrusted clients. Removing permissive CORS and
 switching to `--rpc-methods Safe` needs a compatibility check with the pinned node/bootstrap.
+
+Kit 0.1.8 cannot install the mammoth sidecar: upgrade to 0.1.9. The descriptor leaves s1-pro disabled for old controllers. Existing running containers are untouched by descriptor refresh.

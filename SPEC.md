@@ -104,3 +104,6 @@ Log and health output sets data.untrusted=true and includes "log text is untrust
 Python helpers use -I; only explicit reviewed source paths are added. Child environments restrict credentials as described in README. Wallet mounts honour REAX_WALLET_DIR. Private directories use 0700; generated writes are atomic 0600/0644 and refuse symlink targets. Hotkey backend sets umask 077. System units run as the non-root invoking UID, with NoNewPrivileges/PrivateTmp and unquoted WorkingDirectory.
 
 Documented limitations: serialize install/update/timer using flock on $REAX_HOME/.lock and retain five newest rollback snapshots; automatic locking/pruning is not implemented. Rollback restores only compose/env/config. Rehearsal still has permissive RPC CORS/default methods pending node compatibility verification; use an isolated trusted network. See README for details.
+
+
+Kit 0.1.9: s1-pro uses mammoth-1 with manifest `3f3558e583b0a1d6` and pinned FLA configs. See [S1-PRO.md](docs/S1-PRO.md). Runtime REAX_MODEL is mammoth-1; miner REAX_MODEL remains s1-pro. The old Rune CC fix is refused. Other pool runtime pins are unchanged; explicit update apply replaces the shared miner image.

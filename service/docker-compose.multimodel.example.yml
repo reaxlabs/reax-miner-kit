@@ -10,11 +10,11 @@
 #
 # The tag is mutable on GHCR: for a final release use the name@sha256:... digests from releases/current.json.
 # Another model: add its sidecar block (s1-fast 8101 / s1-pro 8102: copy service/docker-compose.s1-pro.yml and change port and
-# weights; they use RUNE_HOST / RUNE_PORT), list it in REAX_MODELS and add its REAX_<MODEL>_RUNTIME_URL. Every model needs its
+# weights; they use RUNTIME_HOST / RUNTIME_PORT), list it in REAX_MODELS and add its REAX_<MODEL>_RUNTIME_URL. Every model needs its
 # own port and weights directory; the miner refuses two models on one URL. Never publish a sidecar port (8101-8104, 8000).
 services:
   runtime-s1-lite:
-    image: ghcr.io/reaxlabs/reax-s1-lite-runtime:1.2.0-rc11.post7   # pin by digest for a final release (Jetson: reax-s1-lite-runtime-jetson)
+    image: ghcr.io/reaxlabs/reax-s1-lite-runtime@sha256:73cddba2fe765586daab68795936eeba02ce0bf674019c95ad13ce194509cd9f   # pin by digest for a final release (Jetson: reax-s1-lite-runtime-jetson)
     user: "${REAX_UID:?set REAX_UID=$(id -u)}:${REAX_GID:?set REAX_GID=$(id -g)}"
     init: true
     network_mode: host
@@ -36,7 +36,7 @@ services:
           devices: [{driver: nvidia, count: 1, capabilities: [gpu]}]
     logging: {driver: json-file, options: {max-size: "50m", max-file: "5"}}
   runtime-s1-cpu:
-    image: ghcr.io/reaxlabs/reax-s1-cpu-runtime:1.2.0-rc11.post7   # pin by digest for a final release
+    image: ghcr.io/reaxlabs/reax-s1-cpu-runtime@sha256:61b8551f4c1700c2a8ce04bb24d32dc23b0a698bff09cc031089bd07d7c11f7d   # pin by digest for a final release
     user: "${REAX_UID:?set REAX_UID=$(id -u)}:${REAX_GID:?set REAX_GID=$(id -g)}"
     init: true
     network_mode: host
@@ -54,7 +54,7 @@ services:
       - ${REAX_S1_CPU_WEIGHTS:?set REAX_S1_CPU_WEIGHTS to the s1-cpu weights directory}:/model:ro
     logging: {driver: json-file, options: {max-size: "50m", max-file: "5"}}
   miner:
-    image: ghcr.io/reaxlabs/reax-miner:1.2.0-rc11.post7   # pin by digest for a final release
+    image: ghcr.io/reaxlabs/reax-miner@sha256:4a492434622abfc8fc856439a9662da6649beb5a4cb9dbc6df4934a1560c73ff   # pin by digest for a final release
     user: "${REAX_UID:?set REAX_UID=$(id -u)}:${REAX_GID:?set REAX_GID=$(id -g)}"
     init: true
     network_mode: host

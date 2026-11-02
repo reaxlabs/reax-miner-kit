@@ -1,49 +1,41 @@
-# s1-pro walk-through (release 1.2.0rc11.post7)
+# s1-pro mammoth-1 (kit 0.1.9, release 1.2.0rc11.post8.1-kit1)
 
-s1-pro serves Surogate Rune 26B-A4B v3 (`surogate/rune-26b-a4b-GGUF@c6b360d47895bb77bdf3805a13ee5a5557ab1921`, bf16
-safetensors, about 52 GB). Manifest `5b11440bf57b5434`, commitment `reax-s1/1:s1-pro:5b11440bf57b5434`. Hardware, share and
-calibration details are in the subnet repository (`docs/hardware.md`, `docs/MINER.md`).
+Validators accept only manifest `3f3558e583b0a1d6` since 30 October 2026 09:00 UTC.
+The commitment is `reax-s1/1:s1-pro:3f3558e583b0a1d6`.
+Weights: public MIT `baselabs/mammoth-1@61cec44c281c693992e3d6ebeb44dd3402dfa186`, about 55 GB.
+No Hugging Face gate or login is required.
 
-## Requirements
-
-| Item | Value |
+| Item | Requirement |
 | --- | --- |
-| GPU | one NVIDIA GPU, 80–96 GB class, driver R580+ |
-| Measured | RTX PRO 6000 96 GB, H100 80 GB (bit-identical) |
-| Not measured | H200, B200 (expected to work); A100 80 GB (at your own risk) |
-| Disk | about 80 GB free (weights 52 GB plus the runtime image) |
-| Runtime | `reax-s1-pro-runtime`, deterministic vLLM 0.30.0, `RUNE_DETERMINISTIC=1`; stock vLLM and FP8 fail |
-| Hugging Face | gated repo, "auto" approval: accept it with your own account; REAX never mirrors the weights |
+| GPU | One NVIDIA GPU with at least 48 GB, R580+ driver |
+| Measured | RTX PRO 6000 Blackwell Server Edition (96 GB), peak 35.2 GB |
+| Other GPUs | No pinned kernel configs; must pass reax-selfcheck, at your own risk |
+| Free disk | 100 GB: about 55 GB weights + 30 GB runtime image + headroom |
+| Runtime | Digest-pinned reax-engine-ref-mammoth; no command-line arguments |
 
-## With reaxctl
+Run `./reaxctl doctor --pool s1-pro`, resolve blockers, then
+`./reaxctl install --pool s1-pro --mode mainnet --confirm-mainnet` after approval.
+An installed Rune miner changes manifest and resets its score: review and explicitly accept with
+`./reaxctl update apply --accept-manifest-change`. Never put that flag in a timer.
+Weights use a revision-specific directory so Rune files cannot contaminate mammoth; keep the old
+weights until the upgrade is verified. Failed updates restore configuration and the weights marker.
 
-1. `./reaxctl doctor --pool s1-pro --check-hf` — fix every blocker. Warnings tell you about unmeasured cards, a missing HF token,
-   a gate that is not accepted, and confidential-compute mode.
-2. Accept the gate at https://huggingface.co/surogate/rune-26b-a4b-GGUF and run `hf auth login` (the venv provides `hf`). Never paste
-   the token into `reaxctl` or an agent chat.
-3. `./reaxctl install --pool s1-pro --mode mainnet --confirm-mainnet` after human approval. On confidential-compute GPUs
-   (`nvidia-smi conf-compute -f` prints ON) add `--cc-fix` with `REAX_SOURCE_DIR` pointing to a reviewed subnet checkout.
-4. `./reaxctl selfcheck` must pass before you register. Registration is a human step in your own wallet.
-5. `./reaxctl start`, `./reaxctl verify`, `./reaxctl service install`.
+The runtime uses `REAX_MODEL=mammoth-1`; the miner and selfcheck use `REAX_MODEL=s1-pro`.
+It listens on 127.0.0.1:8102. Do not publish the sidecar port. FLA strict mode and the bundled,
+checksum-verified Server Edition configs are mandatory. The root filesystem is read-only;
+/tmp is an executable 16 GB tmpfs, shared memory is 2 GB and the PID limit is 4096.
+Both HF offline variables are set. The Rune `--cc-fix` is unverified for mammoth and is refused.
 
-Switching an installed miner from s1-fast to s1-pro changes the manifest and resets scores: it needs `--accept-manifest-change` and
-human confirmation. For several pools on one hotkey, follow [MULTIMODEL.md](MULTIMODEL.md).
+First start can take about eight minutes to compile kernels. Run `./reaxctl selfcheck --json`
+and require PASS before registration or serving. The kit render has not been run on a GPU.
+Registration remains a human step in your own wallet.
 
-## Probe limits
+Kit 0.1.8 cannot render the pinned config mount. The descriptor disables s1-pro for that controller;
+it reports "This pool is not enabled." Upgrade the kit to 0.1.9 before installing or applying the
+manifest change. Merely fetching the descriptor does not stop existing containers.
+Other pool runtimes stay on post7. An explicit update replaces their shared miner image but keeps
+their weights, manifest, runtime digest and existing per-model limits.
 
-`reaxctl install` leaves probe-limit overrides unset and uses the pinned miner image defaults: s1-pro
-`REAX_PER_CALLER_CONCURRENCY=64`, `REAX_PER_CALLER_PER_MINUTE=728`, `REAX_MAX_CONCURRENT=16`,
-`REAX_MAX_PENDING_PER_IP=128`. Remove any older, lower overrides in an existing `miner.env` or Compose environment.
-From Tue 27 Oct 2026 16:00 UTC, when REAX validators switch, s1-pro can be measured up to 640 decisions/s per hotkey.
-For the other pools and several models, see [MULTIMODEL.md](MULTIMODEL.md).
-
-## Without reaxctl
-
-[`service/docker-compose.s1-pro.yml`](../service/docker-compose.s1-pro.yml) (loopback-only sidecar on 8102, deterministic flag,
-non-root, capabilities dropped), the optional [`docker-compose.s1-pro-ccfix.yml`](../service/docker-compose.s1-pro-ccfix.yml) override
-and [`reax-s1-pro.service`](../service/reax-s1-pro.service). The setup commands are in the header comment of the compose file.
-
-## Competitions
-
-Engine competition and use-case tracks start 16 October 2026 12:00 UTC (50/50 split). No new mining mode is needed:
-https://reax.co/competitions and `docs/COMPETITIONS.md` in https://github.com/reaxlabs/reax-subnet (branch `release/1.2-rc`).
+For manual setup see [the compose template](../service/docker-compose.s1-pro.yml) and
+[the systemd unit](../service/reax-s1-pro.service). For several models, see [MULTIMODEL.md](MULTIMODEL.md).
+The single-backend probe limits remain 64 / 728 / 16 / 128; the per-hotkey cap is 640 decisions/s.

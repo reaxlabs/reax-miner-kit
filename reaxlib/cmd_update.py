@@ -75,7 +75,7 @@ def handle(args):
     from .state import private_dir, write_text
     private_dir(home / "rollback")
     private_dir(rollback)
-    for name in ('compose.yml', 'miner.env', 'config.json'):
+    for name in ('compose.yml', 'miner.env', 'config.json', 'state.json'):
         if (home / name).exists():
             write_text(rollback / name, (home / name).read_text(), 0o644 if name == 'compose.yml' else 0o600)
     # Include old image pins rather than just the newly fetched descriptor.
@@ -94,7 +94,7 @@ def handle(args):
         if rc:
             result = Result('update apply', 'error', 'Updated containers failed to start.', exit_code=13)
     if not result.ok:
-        for name in ('compose.yml', 'miner.env', 'config.json'):
+        for name in ('compose.yml', 'miner.env', 'config.json', 'state.json'):
             if (rollback / name).exists():
                 write_text(home / name, (rollback / name).read_text(), 0o644 if name == 'compose.yml' else 0o600)
         if args.mode != 'localnet' and (home / 'compose.yml').exists():

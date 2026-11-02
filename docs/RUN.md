@@ -103,3 +103,6 @@ checks s1-fast, and reports `hardware_ok` for each pool and a `recommended_pool`
 else `s1-cpu`). Weights are fetched with `weights.files`, so only the single GGUF file
 is downloaded. On a Jetson the compose file uses `runtime: nvidia` and the
 `s1_lite_runtime_jetson` image; on x86 it reserves the NVIDIA device.
+
+
+Kit 0.1.9: s1-pro uses mammoth-1 with manifest `3f3558e583b0a1d6` and pinned FLA configs. See [S1-PRO.md](S1-PRO.md). Runtime REAX_MODEL is mammoth-1; miner REAX_MODEL remains s1-pro. The old Rune CC fix is refused. Other pool runtime pins are unchanged; explicit update apply replaces the shared miner image.

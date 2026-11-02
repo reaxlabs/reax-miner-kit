@@ -118,3 +118,6 @@ $C --entrypoint reax-commit miner withdraw competition --dry-run                
 * Do not set `REAX_FORCE_MULTIROLE`, pass `--replace-all`, or write a competition element without the person's explicit approval of
   the exact element text. Run `reax-commit ... --dry-run` and show the fields first.
 * A commitment write is signed with the hotkey; the coldkey is never involved and never needed. Do not mount a coldkey into a container.
+
+
+Kit 0.1.9: s1-pro uses mammoth-1 with manifest `3f3558e583b0a1d6` and pinned FLA configs. See [S1-PRO.md](S1-PRO.md). Runtime REAX_MODEL is mammoth-1; miner REAX_MODEL remains s1-pro. The old Rune CC fix is refused. Other pool runtime pins are unchanged; explicit update apply replaces the shared miner image.

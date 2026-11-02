@@ -64,18 +64,18 @@ class DescriptorFieldTests(unittest.TestCase):
         by_id = {p['id']: p for p in LAUNCH['pools']}
         self.assertEqual(list(by_id), ['s1-fast', 's1-pro', 's1-lite', 's1-cpu'])
         for pool in by_id.values():
-            self.assertTrue(pool['enabled_at_launch'])
+            self.assertTrue(descriptor.pool_enabled(pool))
             self.assertNotIn('dev_only', pool)
         self.assertEqual(by_id['s1-lite']['commitment'], 'reax-s1/1:s1-lite:8c7297e14e5e89bf')
         self.assertEqual(by_id['s1-cpu']['commitment'], 'reax-s1/1:s1-cpu:f2c9981f0766f2a6')
-        self.assertEqual(LAUNCH['images']['tag'], '1.2.0-rc11.post7')
+        self.assertEqual(LAUNCH['images']['tag'], '1.2.0-rc11.post8.1-kit1')
         self.assertEqual(descriptor.placeholder_digests(LAUNCH), [])
         self.assertTrue(LAUNCH['images']['public'])
         self.assertEqual(sorted(LAUNCH['images']['digests']), ['miner', 's1_cpu_runtime', 's1_fast_runtime', 's1_lite_runtime', 's1_lite_runtime_jetson', 's1_pro_runtime'])
         for key, digest in LAUNCH['images']['digests'].items():
             self.assertRegex(digest, r'^sha256:[0-9a-f]{64}$', key)
         self.assertTrue(LAUNCH['source']['public'])
-        self.assertEqual(LAUNCH['source']['commit'], 'eadfb336be40ebdc45f9c6a971fa518754d9e2da')
+        self.assertEqual(LAUNCH['source']['commit'], '0db24fd9aaa113beb1fb8c883cf2ecbb3fdd86aa')
 
     def test_bundled_has_both_new_pools_disabled_and_dev_only(self):
         descriptor.validate(copy.deepcopy(BUNDLED))
