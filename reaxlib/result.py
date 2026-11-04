@@ -59,6 +59,10 @@ class Result:
                      'What is needed for real mining']
             for item in self.data.get('blockers', []):
                 lines.extend(['  ' + item['message'], '    Fix: ' + item['fix']])
+            seed = self.data.get('triton_seed')
+            if seed:
+                lines.append('  Mammoth Triton seed: {}; SHA256 {}'.format(
+                    'present and verified' if seed['ok'] else 'missing or invalid', seed.get('sha256') or 'unavailable'))
             if not self.data.get('real_mining_possible'):
                 lines.append('  Check the release descriptor: the network must be live, with a netuid and public images.')
             blocker_warnings = {item['message'] + ' Fix: ' + item['fix'] for item in self.data.get('blockers', [])}

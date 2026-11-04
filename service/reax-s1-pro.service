@@ -12,6 +12,8 @@ RemainAfterExit=yes
 WorkingDirectory=@WORKDIR@
 Environment=REAX_S1_PRO_WEIGHTS=@WEIGHTS@ REAX_UID=@UID@ REAX_GID=@GID@
 Environment=REAX_FLA_CONFIGS=@FLA_CONFIGS@
+Environment=REAX_TRITON_SEED=@KIT@/configs/mammoth-triton-seed
+ExecStartPre=/usr/bin/python3 @KIT@/reaxlib/triton_seed.py
 # Verify the bundled FLA config checksums before starting. The Rune CC fix is unverified here.
 ExecStart=/usr/bin/docker compose -f docker-compose.s1-pro.yml up -d
 ExecStop=/usr/bin/docker compose -f docker-compose.s1-pro.yml down
