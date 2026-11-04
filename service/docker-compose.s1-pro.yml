@@ -3,8 +3,6 @@
 # Public weights: hf download baselabs/mammoth-1 --revision 61cec44c281c693992e3d6ebeb44dd3402dfa186 --local-dir /srv/reax/mammoth-1
 # Set REAX_S1_PRO_WEIGHTS=/srv/reax/mammoth-1 and REAX_FLA_CONFIGS=<kit>/configs/rtx-pro-6000-blackwell-server.
 # Verify in that config directory: sha256sum -c SHA256SUMS. Never publish port 8102.
-# Also set REAX_TRITON_SEED=<kit>/configs/mammoth-triton-seed after verifying its SHA256 (docs/S1-PRO.md).
-# Before each manual start: python3 <kit>/reaxlib/triton_seed.py && docker compose -f docker-compose.s1-pro.yml up -d
 # No Rune CC override; it is unverified for mammoth. Run reaxctl selfcheck and require PASS before serving.
 services:
   runtime:
@@ -19,7 +17,6 @@ services:
     tmpfs: ["/tmp:rw,exec,nosuid,nodev,size=16g"]
     shm_size: "2g"
     pids_limit: 4096
-    entrypoint: ["/bin/sh", "-c", 'mkdir -p /tmp/triton && cp -r /seedctl/. /tmp/triton/ || exit 97; exec "$$0" "$$@"', "python", "-m", "engine.serve"]
     environment:
       S1M_INTERNAL_TOKEN_FILE: /run/runtime-token
       RUNTIME_HOST: 127.0.0.1
@@ -29,7 +26,6 @@ services:
       REAX_PROFILE: reference
       CIE_LAZY_LOAD: "1"
       REAX_MAX_WAIT_MS: "4"
-      TRITON_CACHE_DIR: /tmp/triton
       FLA_CACHE_MODE: strict
       FLA_CONFIG_DIR: /opt/reax/fla-configs/rtx-pro-6000-blackwell-server
       HF_HUB_OFFLINE: "1"
@@ -38,7 +34,6 @@ services:
       - ./secrets/runtime-token:/run/runtime-token:ro
       - ${REAX_S1_PRO_WEIGHTS:?set REAX_S1_PRO_WEIGHTS to the hf download --local-dir directory}:/model:ro
       - ${REAX_FLA_CONFIGS:?set REAX_FLA_CONFIGS to the verified bundled configs}:/opt/reax/fla-configs/rtx-pro-6000-blackwell-server:ro
-      - ${REAX_TRITON_SEED:?set REAX_TRITON_SEED to the verified bundled seed}:/seedctl:ro
     deploy:
       resources:
         reservations:

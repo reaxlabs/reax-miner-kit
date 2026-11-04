@@ -1,4 +1,4 @@
-"""Kit-owned Triton autotune seed for the mammoth reference contract only."""
+"""Retired Mammoth Triton seed preflight. New installs no longer use it; kept for installs rendered 4 Nov 2026."""
 import hashlib
 from pathlib import Path
 
