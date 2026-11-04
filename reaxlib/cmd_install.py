@@ -12,6 +12,7 @@ import time
 from .cli import add_common
 from .result import Result
 from .descriptor import PLACEHOLDER_DIGEST, pool_enabled
+from . import triton_seed
 
 
 def runner(cmd, timeout=120, env=None, spawn=False, log=None, foreground=False):
@@ -278,6 +279,11 @@ def render(home, d, config, source=None):
                 configs = verified_configs(runtime)
                 services += ['    read_only: true', '    tmpfs:', '      - ' + q(runtime['tmpfs']), '    shm_size: ' + q(runtime['shm_size']), '    pids_limit: ' + str(runtime['pids_limit'])]
                 ccfix += ['      - ' + q(str(configs) + ':' + runtime['env']['FLA_CONFIG_DIR'] + ':ro')]
+            if triton_seed.applies(pool):
+                seed = triton_seed.verify()
+                services += ['    entrypoint: [' + ', '.join(q(arg) for arg in triton_seed.ENTRYPOINT) + ']']
+                ccfix += ['      - ' + q(str(seed) + ':/seedctl:ro')]
+                runtime_env += ['      TRITON_CACHE_DIR: /tmp/triton']
             if on_jetson:
                 services += ['    runtime: nvidia']  # Jetson exposes its integrated GPU through the nvidia runtime, not a device reservation
             services += ['    environment:', '      S1M_INTERNAL_TOKEN_FILE: /run/runtime-token',
@@ -348,6 +354,11 @@ def install(args):
         verified_configs(pool['runtime'])
         config.pop('cc_fix', None)
         config.pop('ccfix_dir', None)
+    if triton_seed.applies(pool):
+        try:
+            triton_seed.verify()
+        except ValueError as exc:
+            return Result('install', 'blocked', str(exc), exit_code=10)
     ancestor = home
     while not ancestor.exists():
         ancestor = ancestor.parent

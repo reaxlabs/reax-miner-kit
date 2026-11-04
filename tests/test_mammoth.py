@@ -48,7 +48,7 @@ class MammothTest(unittest.TestCase):
         for line in envtext.splitlines():
             key, val = line.strip().split(': ',1)
             actual[key] = json.loads(val) if val.startswith('"') else val
-        self.assertEqual(actual, expected)
+        self.assertEqual(actual, dict(expected, TRITON_CACHE_DIR='/tmp/triton'))
         for option in ('read_only: true', '/tmp:rw,exec,nosuid,nodev,size=16g', 'shm_size: "2g"',
                        'pids_limit: 4096', 'cap_drop: [ALL]', 'no-new-privileges:true', 'init: true', 'network_mode: host'):
             self.assertIn(option, text)

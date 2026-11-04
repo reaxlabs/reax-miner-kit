@@ -10,6 +10,17 @@ from . import localnet_ops
 
 
 def compose(home, *args, **kwargs):
+    # Covers runtime actions, selfcheck starts and update/rollback starts.
+    if args and args[0] in ('up', 'restart', 'start'):
+        from . import triton_seed
+        config = io.read_config(home)
+        if config.get('pool') == 's1-pro':
+            pool = io.pool_of(io.descriptor(home), 's1-pro')
+            if triton_seed.applies(pool):
+                try:
+                    triton_seed.verify()
+                except ValueError as exc:
+                    return 10, '', str(exc)
     return io.runner(['docker', 'compose', '-f', str(home / 'compose.yml')] + list(args), **kwargs)
 
 
@@ -136,8 +147,8 @@ def handle(args):
     if not (home / 'compose.yml').exists():
         return Result(command, 'blocked', 'Run install before managing the miner.', exit_code=10)
     actions = {'start': ['up', '-d'], 'stop': ['down'], 'restart': ['restart'], 'run': ['up', '--abort-on-container-exit']}
-    rc, _, _ = compose(home, *actions[command], timeout=None if command == 'run' else 300, foreground=command == 'run')
-    return Result(command, 'error' if rc else 'ok', 'Runtime action failed.' if rc else 'Runtime action completed.', exit_code=13 if rc else 0)
+    rc, _, err = compose(home, *actions[command], timeout=None if command == 'run' else 300, foreground=command == 'run')
+    return Result(command, 'blocked' if rc == 10 else 'error' if rc else 'ok', err if rc == 10 else 'Runtime action failed.' if rc else 'Runtime action completed.', exit_code=10 if rc == 10 else 13 if rc else 0)
 
 
 def verify(args, home, config):
