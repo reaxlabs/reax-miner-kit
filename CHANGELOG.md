@@ -10,6 +10,8 @@
 
 ## Unreleased
 
+- The Mammoth Triton seed is no longer used by new s1-pro setups. A setup installed from main between 4 Nov 2026 10:03 UTC and this change keeps its seed mount after `git pull` and keeps working, so the seed files stay; rerun install (or use the current compose template and unit) to drop the mount. Nothing needs to be done otherwise.
+
 ## 0.1.8
 
 - Release descriptor 1.2.0rc11.post7 (reax-subnet commit eadfb336be40ebdc45f9c6a971fa518754d9e2da, tag `v1.2.0-rc11.post7`): refreshed image digests and live chain snapshot. The bundled descriptor in the tarball matches the release descriptor. Pool manifests, pinned weights and minimum release 1.1.0rc2 are unchanged.

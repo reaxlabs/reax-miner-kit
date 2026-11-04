@@ -100,16 +100,6 @@ def diagnose(args, probe=None, host=None, release=None):
     accel = lambda pool: pool.get('accelerator', 'nvidia')
     is_active = lambda pool: selected_id == pool['id']
     selected = next((p for p in pools if p['id'] == selected_id), None)
-    from . import triton_seed
-    seed_info = None
-    if triton_seed.applies(selected):
-        try:
-            seed_info = triton_seed.inspect()
-        except OSError:
-            seed_info = dict(present=False, sha256=None, expected_sha256=triton_seed.SHA256, ok=False)
-        if not seed_info['ok']:
-            blockers.append({'id': 'triton_seed', 'message': 'Mammoth Triton seed missing or checksum mismatch.',
-                             'fix': 'Reinstall the kit to restore the pinned seed before starting.'})
     # Host-wide blockers (GPU, driver, toolkit, OS, size) describe the selected pool only (default s1-fast): s1-pro, s1-lite and s1-cpu must not block hosts that mine another pool.
     target = [p for p in pools if is_active(p)]
     needs_nvidia = any(accel(p) == 'nvidia' for p in target)
@@ -292,8 +282,6 @@ def diagnose(args, probe=None, host=None, release=None):
                 eligible_pools=eligible, rehearsal_capable=rehearsal, rehearsal_possible=bool(rehearsal and source_ok), rehearsal_source_available=source_ok, real_mining_possible=bool(ready), blockers=blockers,
                 mode_default='localnet', huggingface={'checked': False, 'reachable': None}, public_ip=None,
                 confidential_compute=cc, hf_gate=hf_gate, placeholder_digests=placeholders)
-    if seed_info is not None:
-        data['triton_seed'] = seed_info
     if getattr(args, 'probe_ip', False):
         for endpoint, key in [('https://api.ipify.org', 'public_ip'), ('https://huggingface.co', 'huggingface')]:
             try:

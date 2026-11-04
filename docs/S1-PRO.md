@@ -39,27 +39,3 @@ their weights, manifest, runtime digest and existing per-model limits.
 For manual setup see [the compose template](../service/docker-compose.s1-pro.yml) and
 [the systemd unit](../service/reax-s1-pro.service). For several models, see [MULTIMODEL.md](MULTIMODEL.md).
 The single-backend probe limits remain 64 / 728 / 16 / 128; the per-hotkey cap is 640 decisions/s.
-
-The kit also ships a single Triton autotune seed for `mammoth-reference/1` at
-`configs/mammoth-triton-seed/UBI36QQLJDLOXDYUOXUAFH7IJLNLP3IQAUE3ETMXLNEPEZIFLWYQ/chunk_fwd_kernel_o.autotune.json`.
-Its SHA256 is `51b996aa4e577fa923c4d6142b79c613a9aba2e79506dff111277ba8e8b2a326` (816 bytes),
-pinned in `reaxlib/triton_seed.py`. Install, render and kit-managed starts verify it;
-`doctor --pool s1-pro --json` reports `data.triton_seed` with presence, actual SHA and validity.
-A missing or changed seed blocks starting. Reinstall the kit to restore it. Existing installations
-must rerun install to render the new mount and entrypoint; fetching a descriptor alone does not update compose.
-The directory is mounted read-only at `/seedctl`; the entrypoint copies it into the fresh writable
-`/tmp/triton` cache before `python -m engine.serve`. The image and manifest remain unchanged.
-The seed selects BK/BV 64 with 4 warps for the measured key. This change has only offline validation;
-fresh GPU starts using this rendered compose and a passing selfcheck remain required before adoption.
-
-For manual Compose, export `REAX_TRITON_SEED=<absolute-kit-path>/configs/mammoth-triton-seed` and
-run `python3 <absolute-kit-path>/reaxlib/triton_seed.py && docker compose -f docker-compose.s1-pro.yml up -d`
-before each start. The manual systemd unit uses the same preflight; replace its new `@KIT@`
-placeholder with that absolute kit path. Keep the full kit directory at that path while installed.
-The controller checks do not intercept direct Docker commands or Docker's automatic restart policy.
-
-There is no gVisor/runsc setting or render path in this kit. `runtime: nvidia` belongs to the Jetson
-pool, not to gVisor. Validator engine isolation is managed outside the kit: the subnet release branch has
-`src/reax_subnet/engrunner.py` (`RELEASE_RUNTIME="runsc"`, release preflight and `docker run --runtime`),
-configured by `REAX_ENGINE_DOCKER_RUNTIME`. Its no-network / host-UDS policy is separate from this
-loopback sidecar. This change does not select runsc for either the trusted sidecar or miner.
