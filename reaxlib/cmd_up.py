@@ -63,6 +63,14 @@ def _lines(steps):
     return ['[{}] {} - {}'.format(s['status'], s['id'], s['what']) for s in steps]
 
 
+def _text(steps, base):
+    """Step lines, plus the EU operator path for --eu (contract and answer test, not bit identity)."""
+    lines = _lines(steps)
+    if base.get('eu_path'):
+        lines += ['EU operator path ({}):'.format(base['eu_path']['verification'])] + ['  - ' + line for line in base['eu_path']['steps']]
+    return lines
+
+
 def _failed(command, result, steps, step_id, model, **extra):
     """Turn a failing child result into this command's result: same exit code, same message, plus the steps so far."""
     steps = steps + [_step(step_id, 'failed' if result.status != 'needs_human' else 'needs_human', result.summary)]
@@ -273,7 +281,7 @@ def up(args):
             registered = bool(status.get('registered'))
             return Result('up', status='ok' if registered else 'needs_human', exit_code=0 if registered else 11,
                           summary='{} is already set up and running.'.format(entry['id']) + ('' if registered else ' The hotkey is not registered yet.'),
-                          data=dict(base, already_set_up=True, steps=done, text_lines=_lines(done),
+                          data=dict(base, already_set_up=True, steps=done, text_lines=_text(done, base),
                                     running=True, registered=registered, commitment_published=status.get('commitment_published'), last_validator_score=status.get('last_validator_score')),
                           next=[{'command': 'reaxctl verify', 'why': 'Check health, commitment and validator rounds.'}])
     # 1 doctor
@@ -324,7 +332,7 @@ def up(args):
                           'reaxctl wallet coldkeypub --ss58 <your public coldkey address>' if 'public coldkey address' in missing else 'Public coldkey address: found',
                           'Register the hotkey in your own wallet (you approve and pay the fee): ' + release['links']['register'],
                           'Run again: reaxctl up --model {}'.format(entry['id'])], release['links']['register'])
-        human.data = dict(base, steps=done, text_lines=_lines(done))
+        human.data = dict(base, steps=done, text_lines=_text(done, base))
         human.warnings = warnings
         return human
     done.append(_step('wallet', 'ok', 'hotkey and public coldkey address found'))
@@ -349,13 +357,13 @@ def up(args):
     io.mark(home, 'up', {'model': entry['id'], 'release_id': release['release_id'], 'eu': eu})
     if registered:
         done.append(_step('register', 'ok', 'registration seen in the miner log'))
-        return Result('up', summary='{} is set up and running.'.format(entry['id']), data=dict(base, steps=done, text_lines=_lines(done)), warnings=warnings,
+        return Result('up', summary='{} is set up and running.'.format(entry['id']), data=dict(base, steps=done, text_lines=_text(done, base)), warnings=warnings,
                       next=[{'command': 'reaxctl verify', 'why': 'Check health, commitment and validator rounds.'}])
     done.append(_step('register', 'needs_human', 'the hotkey is not registered yet'))
     registration = cmd_wallet.registration(_ns(args, mode=mode, wallet_name=None, hotkey_name=None))
     needs = registration.needs_human or {'action': 'Register the hotkey in your own wallet.', 'why': 'reaxctl never pays or registers.', 'steps': [release['links']['register']]}
     return Result('up', 'needs_human', 'The miner is running. Register the hotkey in your own wallet; it starts serving by itself afterwards.', needs_human=needs, warnings=warnings,
-                  data=dict(base, steps=done, text_lines=_lines(done), hotkey_ss58=registration.data.get('hotkey_ss58')),
+                  data=dict(base, steps=done, text_lines=_text(done, base), hotkey_ss58=registration.data.get('hotkey_ss58')),
                   next=[{'command': 'reaxctl verify', 'why': 'Run after registering.'}], exit_code=11)
 
 
@@ -459,6 +467,7 @@ def switch(args):
         if was_active:
             unit_do(args, 'start')
         result.command = 'switch'
+        result.summary = ('Switch to {} failed; the setup for {} could not be restarted automatically. {}' if restart_failed else 'Switch to {} failed and {} was restored. {}').format(entry['id'], old_id, result.summary)
         extra = dict(base, rolled_back=True, rollback_dir=str(snap), restart_failed=restart_failed, failed_step=step_id)
         result.data = dict(result.data, **extra)
         result.data['steps'] = done + [_step(step_id, 'failed', text)]
@@ -509,7 +518,7 @@ def switch(args):
     done.append(_step('weights', 'ok', 'old weights removed (--purge-old)' if purged else ('old weights kept in {}'.format(home / 'weights' / old_id) if kept else 'no old weights on disk')))
     return Result('switch', summary='Switched from {} to {}.'.format(old_id, entry['id']), warnings=warnings,
                   data=dict(base, changed=True, commitment_before=old_commitment, commitment_published=published, check_commitment=commit_show_command(home),
-                            old_weights_kept=kept and not purged, rollback_dir=str(snap), steps=done, text_lines=_lines(done) + ['Commitment now: ' + entry['commitment']]),
+                            old_weights_kept=kept and not purged, rollback_dir=str(snap), steps=done, text_lines=_text(done, base) + ['Commitment now: ' + entry['commitment']]),
                   next=[{'command': 'reaxctl verify', 'why': 'Check health, commitment and validator rounds for the new model.'}])
 
 

@@ -385,6 +385,8 @@ class UpRunTest(Harness):
         self.assertEqual(self.step_status(result)['answer-test'], 'ok')
         self.assertTrue(io.read_config(self.home)['eu'])
         self.assertIn('eu_path', result.data)
+        self.assertIn('EU operator path (answer test (fidelity of the answers), not bit identity):', result.data['text_lines'])
+        self.assertIn('answer-test', ' '.join(result.data['text_lines']))
 
     def test_eu_without_the_answer_test_continues_with_a_warning(self):
         self.make_wallet()
@@ -453,6 +455,7 @@ class SwitchTest(Harness):
         self.assertTrue(result.data['rolled_back'])
         self.assertFalse(result.data['restart_failed'])
         self.assertEqual(result.data['failed_step'], 'selfcheck')
+        self.assertTrue(result.summary.startswith('Switch to kev-4b failed and other-4b was restored. Reference self-check failed'))
         self.assertEqual(self.files(), {'compose.yml': 'OLD COMPOSE\n', 'miner.env': 'OLD ENV\n'})
         self.assertEqual(io.read_config(self.home)['pool'], 'other-4b')
         self.assertEqual(io.read_config(self.home)['manifest_id'], '0123456789abcdef')
@@ -485,6 +488,7 @@ class SwitchTest(Harness):
         self.compose_rc[('up', '-d')] = 1
         result = self.run_switch()
         self.assertTrue(result.data['restart_failed'])
+        self.assertIn('could not be restarted automatically', result.summary)
         self.assertTrue(any('did not restart' in w for w in result.warnings))
 
     def test_miner_start_failure_rolls_back(self):
