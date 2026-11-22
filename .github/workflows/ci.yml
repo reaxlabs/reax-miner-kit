@@ -19,6 +19,12 @@ jobs:
           python-version: ${{ matrix.python }}
       - run: python -m unittest discover -s tests
       - run: python -m py_compile reaxctl reaxlib/*.py
+      - name: Installer syntax and lint
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n install.sh
+          command -v shellcheck >/dev/null && shellcheck -s bash install.sh || echo "shellcheck not installed; skipped"
       - name: CLI smoke
         shell: bash
         run: |
@@ -26,3 +32,5 @@ jobs:
           ./reaxctl spec --json | python3 -m json.tool
           # exit 10 = requirement unmet (e.g. Python < 3.10 for mining tools); any other non-zero code is a failure
           ./reaxctl doctor --json || [ "$?" -eq 10 ]
+          ./reaxctl models --offline --json | python3 -m json.tool > /dev/null
+          ./reaxctl up --model s1-fast --dry-run --offline --json | python3 -m json.tool > /dev/null

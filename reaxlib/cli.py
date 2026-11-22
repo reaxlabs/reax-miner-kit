@@ -24,6 +24,9 @@ MODULES = [
     ("reaxlib.cmd_update", "run"),     # update check|apply|timer
     ("reaxlib.cmd_localnet", "run"),   # localnet up|down|status
     ("reaxlib.cmd_uninstall", "run"),  # uninstall
+    ("reaxlib.cmd_models", "kit"),     # models
+    ("reaxlib.cmd_up", "kit"),         # up, switch
+    ("reaxlib.cmd_answertest", "kit"), # answer-test
 ]
 
 

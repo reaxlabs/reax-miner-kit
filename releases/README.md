@@ -47,6 +47,24 @@ must not downgrade known release versions or regress a live launch. Set --offlin
 REAX_OFFLINE=1 to suppress refresh. The validated descriptor remains unsigned: HTTPS and
 schema checks are not a cryptographic publisher signature.
 
+### Models (per-model pots)
+
+`models[]` is an optional top-level list: one entry per mineable model, so a new model is a new entry and not new code. `reaxctl models`, `up` and `switch` read the legacy `pools[]` and `models[]` through one catalog. Example: [portfolio-example.json](portfolio-example.json) (five `coming` models; it is an example, not a release).
+
+| Field | Meaning |
+| --- | --- |
+| `id`, `name`, `pot` | Model id used with `--model` (`[a-z0-9-]`, unique, never a pool id), display name, pot id |
+| `status` | `live` (installable), `coming` (announced; `TBD-*` placeholders allowed), `retired` (kept so installed miners get a clear message) |
+| `weights` | `repo`, `revision` (40-hex for `live`), `gated`, `size_gb`; optional `files`, `licence`, `format` |
+| `runtime` | `image` (`ghcr.io/<trusted owner>/...`), `digest` (`sha256:<64 hex>` for `live`), `port` (listed in `requirements.never_publish_ports`, unique), optional `env`, `host_var`, `port_var`. The kit mounts the weights at `/model` and the runtime token; environment variables it controls cannot be set |
+| `gpu` | `min_vram_gb`, `count`, `vendor`; optional `class` (label), `max_vram_gb`, `measured[]`, `unmeasured_note`. CPU-only: `accelerator: "none"`, count 0, vendor `none` |
+| `unit_throughput` | Optional `{unit, value|null, per: gpu|machine, note}`: what one unit of hardware is expected to serve; informational for miners |
+| `manifest_id`, `commitment` | 16 hex for `live` (or `TBD-*` while `coming`); the commitment is `reax-s1/1:<id>:<manifest_id>` |
+| `disk_gb`, `min_ram_gb`, `min_cpu_cores`, `arch`, `tier`, `accelerator`, `jetson` | Hardware requirements, as for pools |
+| `miner_env` | Optional extra miner environment (`REAX_*` keys only), for switches the subnet release needs |
+
+Legacy `pools[]` may carry `status` (`live`, `coming`, `retired`), `pot` and `unit_throughput`; without `status` a pool is `live` when `enabled_at_launch`, else `coming`. **Compatibility:** a kit older than 0.2.0 rejects a descriptor with a `models` key ("unknown release descriptor fields") and keeps using its bundled or cached one with a warning. Publish kit 0.2.0 (and let miners update) before `releases/current.json` carries `models`. The miner image must also know the new model ids and publish the commitment; the kit only renders `REAX_MODEL=<id>` and `REAX_<ID>_RUNTIME_URL`.
+
 ### Tiered pools (optional pool fields)
 
 `s1-lite` and `s1-cpu` use these optional `pools[]` fields (absent means the `s1-fast`/`s1-pro` behaviour): `tier` (`gpu`, `small`, `cpu`), `arch` (list of `x86_64`/`aarch64`, default `["x86_64"]`), `accelerator` (`nvidia`, `none`; `none` allows `gpu.count: 0`, `gpu.vendor: "none"`, `gpu.min_vram_gb: 0`), `jetson` (bool; needs `nvidia` and `aarch64`), `weights.files` (exact file names; only these are downloaded), `min_ram_gb` / `min_cpu_cores` (per-pool override of `requirements`), and `dev_only` (localnet/testnet only; mainnet install is refused). Image keys `s1_lite_runtime`, `s1_lite_runtime_jetson` (linux/arm64, Jetson) and `s1_cpu_runtime` are optional in `images`; in 1.2.0rc1 they carry `sha256:TBD-*` placeholders like the others until the subnet's docker.yml publishes them. Manifest ids of `s1-lite` (`8c7297e14e5e89bf`) and `s1-cpu` (`f2c9981f0766f2a6`) must equal the subnet release's manifests (`sha256` of the canonical JSON, first 16 hex). Sidecar ports 8103 and 8104 are listed in `never_publish_ports`.

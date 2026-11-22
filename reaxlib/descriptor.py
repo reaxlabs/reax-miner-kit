@@ -86,13 +86,15 @@ def pool_enabled(pool):
 
 
 def validate(value):
+    from . import models  # lazy: models imports this module
+
     def require(obj, keys):
         if not isinstance(obj, dict) or any(key not in obj for key in keys):
             raise ValueError('release descriptor is missing required fields')
     require(value, ['schema', 'release_id', 'status', 'minimum_release', 'images', 'source', 'pools', 'requirements', 'links', 'update'])
     if not isinstance(value['release_id'], str) or not value['release_id'] or not isinstance(value['minimum_release'], str):
         raise ValueError('invalid release identifier')
-    allowed = {'schema', 'release_id', 'updated', 'status', 'minimum_release', 'images', 'source', 'pools', 'requirements', 'links', 'update', 'tools'}
+    allowed = {'schema', 'release_id', 'updated', 'status', 'minimum_release', 'images', 'source', 'pools', 'requirements', 'links', 'update', 'tools', 'models'}
     if set(value) - allowed:
         raise ValueError('unknown release descriptor fields')
     if value['schema'] != 'reax-release/1':
@@ -142,6 +144,7 @@ def validate(value):
         require(pool['weights'], ['repo', 'revision', 'gated', 'size_gb'])
         require(pool['gpu'], ['min_vram_gb', 'count', 'vendor'])
         validate_pool_extras(pool)
+        models.validate_pool_catalog_fields(pool)
         cpu_only = pool.get('accelerator', 'nvidia') == 'none'
         if cpu_only:
             if pool['gpu']['count'] != 0 or type(pool['gpu']['count']) is not int or pool['gpu']['vendor'] != 'none':
@@ -219,6 +222,7 @@ def validate(value):
         matches(r'[A-Za-z0-9_-]+', pool['manifest_id'], 'manifest id')
         if pool['commitment'] != 'reax-s1/1:' + pool['id'] + ':' + pool['manifest_id']:
             raise ValueError('invalid descriptor commitment')
+    models.validate_models(value)  # optional per-model pots (releases/README.md, "Models")
     return value
 
 

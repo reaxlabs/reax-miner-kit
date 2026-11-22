@@ -59,3 +59,14 @@ Tests use fakes and temporary directories; do not introduce real wallet, Docker,
 - Never set `REAX_FORCE_MULTIROLE=1` or pass `--replace-all` on mainnet without the person's explicit approval of the exact fields; both bypass the start-block protection and `--replace-all` drops the other element.
 
 See the [README security model](README.md#security-model) for fetch limits, source pins, container settings and documented runtime limitations.
+
+
+## Kit 0.2.0 rules (one-line setup and switch)
+
+- `install.sh` and `reaxctl up` set up a real miner in one go. They never create or read a coldkey, never pay and never register a hotkey; registration stays a `needs_human` step. Run them on mainnet only after the person approved that exact command: `install.sh --model <id>` passes `--confirm-mainnet` for the person who runs it, so an agent must not run it on its own initiative. Preview with `reaxctl models --json` and `reaxctl up --model <id> --dry-run --json`.
+- Pass `--commit <40-hex>` to `install.sh` only with a commit the person got from a second place (https://reax.dev/mine/). Without it the installer prints the commit and warns that it is unverified.
+- `install.sh` runs no sudo unless `--install-deps` is given, and then only the apt packages listed in the script. Do not add packages to that list, and do not install Docker or the NVIDIA toolkit for the person.
+- `reaxctl switch` changes the pot of the hotkey: the score there starts from zero. Use `--dry-run` first and tell the person. It restores the old setup when the check fails; never delete the rollback directory under `$REAX_HOME/rollback/` by hand, and use `--purge-old` only when the person asked to free disk.
+- EU operators use `--eu` (answer test instead of bit identity). `reaxctl answer-test` exits 12 until the subnet ships `reax-answertest`; report that instead of working around it.
+- Models come from the release descriptor (`models[]`, `pools[]`); a `coming` or `retired` model cannot be installed. Never edit pins in `releases/` outside a release update.
+- New code: `reaxlib/models.py` (catalog and fit), `cmd_models.py`, `cmd_up.py` (`up`, `switch`), `cmd_answertest.py`, `install.sh`. Tests: `tests/test_models_catalog.py`, `test_one_line.py`, `test_answertest.py`, `test_install_sh.py`. `bash -n install.sh` and `shellcheck install.sh` run in CI.

@@ -14,6 +14,23 @@ Read this before you spend anything.
 - Keep your coldkey off the mining box. Only a hotkey belongs on that machine; never give a coldkey or recovery phrase to this kit, an agent or anyone else.
 - The kit is MIT licensed software provided as is, without warranty. Review what an agent runs on your behalf.
 
+## One-line setup
+
+On a Linux machine with an NVIDIA GPU (or no GPU for the small CPU model), one line installs the software, downloads the model and starts the miner. Pick a model from https://reax.dev/mine/ (the example uses `s1-fast`; add `--list` instead of `--model` to see every model and what it needs):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/reaxlabs/reax-miner-kit/v0.2.0/install.sh \
+  | bash -s -- --model s1-fast --commit <commit announced at https://reax.dev/mine/>
+```
+
+It checks the machine, clones the kit at the pinned tag, verifies the commit and the release pins, then runs `reaxctl up --model s1-fast` (weights and runtime image by digest, self-check, miner, service). It stops at the first failure with one next step and can be run again. It never touches a coldkey, never pays and never registers a hotkey: you register the hotkey in your own wallet when it asks. Moving to another model later is one command with automatic rollback:
+
+```sh
+./reaxctl switch --model s1-pro
+```
+
+EU contract operators add `--eu` (answer test instead of bit identity). Details, options and multi-GPU notes: [docs/ONE-LINE.md](docs/ONE-LINE.md). The step-by-step path below remains for the free localnet rehearsal and for manual control.
+
 ## Quickstart for people
 
 Start at https://reax.dev/mine/ for the guide and current launch status. On Ubuntu/Debian the controller needs only `git` and `python3` (3.8 or newer); `install` and the rehearsal also need `python3-venv`, which Debian and Ubuntu package separately, and Python 3.10.12+, 3.11.4+ or 3.12+ (the rehearsal unpacks its chain image with tarfile extraction filters). Ubuntu 22.04 and newer and Debian 13 qualify; Debian 12's stock Python 3.11.2 lacked them when tested, so there run `reaxctl` with a newer Python (for example `python3.12 ./reaxctl install`). `doctor` checks both:
@@ -49,15 +66,19 @@ Give your agent this one-sentence prompt:
 
 > Set up this machine for mining on the REAX subnet: https://reax.dev/mine/
 
-Read [AGENTS.md](AGENTS.md), then use `./reaxctl spec --json`, `./reaxctl agent-rules --json` and `./reaxctl doctor --json`. Every command supports `--json` and returns one `reaxctl/1` object with status, warnings, human actions and next steps. `--yes` does not authorize payments or key disclosure.
+For a real miner, show the person the one-line installer above (with `./reaxctl models --json` and `./reaxctl up --model <id> --dry-run --json` as the preview) and wait for their approval before running it; see [docs/ONE-LINE.md](docs/ONE-LINE.md). Read [AGENTS.md](AGENTS.md), then use `./reaxctl spec --json`, `./reaxctl agent-rules --json` and `./reaxctl doctor --json`. Every command supports `--json` and returns one `reaxctl/1` object with status, warnings, human actions and next steps. `--yes` does not authorize payments or key disclosure.
 
 ## Commands
 
 | Command | Purpose |
 | --- | --- |
+| `up --model ID [--gpu N] [--eu] [--dry-run]` | One command from a fresh machine to a running miner: doctor, install, runtime, self-check, wallet check, miner, service, registration handoff (idempotent) |
+| `switch --model ID [--purge-old] [--dry-run]` | Move the installed miner to another model; restores the old setup if the new model fails its check |
+| `models [--json] [--all] [--status S]` | Models from the release with status (`live`/`coming`/`retired`), hardware need and whether this machine fits |
+| `answer-test` | EU operators: check the runtime answers against the reference (not bit identity); explains when the test is not shipped yet |
 | `doctor [--pool P] [--probe-ip] [--check-hf]` | Read-only host requirements (s1-pro: VRAM, unmeasured cards, confidential-compute mode, HF token); optional explicit network probes |
 | `plan --mode M --pool P` | Ordered setup steps, costs, owners and availability blocks |
-| `install --mode M --pool P [--cc-fix]` | Prepare pinned tools, source or images and weights (`--cc-fix`: s1-pro on confidential-compute GPUs) |
+| `install --mode M --pool P [--gpu N] [--cc-fix]` | Prepare pinned tools, source or images and weights (`--cc-fix`: s1-pro on confidential-compute GPUs) |
 | `selfcheck [--no-start]` | Testnet/mainnet: run the release's reference decisions through the runtime sidecar before registering (no wallet or chain needed) |
 | `wallet hotkey` | Create only a hotkey; never show its phrase |
 | `wallet coldkeypub --ss58 ADDRESS` | Import a public coldkey address |

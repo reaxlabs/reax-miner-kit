@@ -74,6 +74,8 @@ class Result:
                 lines.append('    ' + wallet['name'] + ': ' + str(wallet.get('hotkey_ss58') or wallet.get('coldkeypub_ss58') or 'public address unavailable'))
         if self.data.get('detail'):
             lines.append(f"  detail: {self.data['detail']}")
+        for row in self.data.get('text_lines', []):  # plain-text report lines of models / up / switch
+            lines.append('  ' + row)
         if self.command == 'plan':
             for i, step in enumerate(self.data.get('steps', []), 1):
                 extra = ' (blocked: ' + step['blocked'] + ')' if step.get('blocked') else ''

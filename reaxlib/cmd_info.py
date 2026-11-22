@@ -17,8 +17,9 @@ RULES = [
     'In testnet/mainnet run reaxctl selfcheck after install and before suggesting a registration; do not suggest registering while it fails.',
     'Never publish sidecar ports 8101, 8102, 8103, 8104 or 8000; miner port defaults to 8091.',
     'No telemetry; disclose every contacted endpoint in net-policy.',
+    'up and switch (and install.sh, which runs up) never create or read a coldkey, never pay and never register a hotkey: registration stays the human step. Run install.sh or up on mainnet only after the person approved that exact command; the installer passes --confirm-mainnet on their behalf.',
 ]
-COMMANDS = ['doctor', 'plan', 'install', 'selfcheck', 'wallet hotkey', 'wallet coldkeypub', 'wallet status', 'register', 'start', 'stop', 'restart', 'status', 'logs', 'run', 'verify', 'service install', 'service uninstall', 'service status', 'update check', 'update apply', 'update timer install', 'update timer uninstall', 'localnet up', 'localnet down', 'localnet status', 'uninstall', 'spec', 'agent-rules', 'net-policy', 'version']
+COMMANDS = ['doctor', 'plan', 'install', 'selfcheck', 'wallet hotkey', 'wallet coldkeypub', 'wallet status', 'register', 'start', 'stop', 'restart', 'status', 'logs', 'run', 'verify', 'service install', 'service uninstall', 'service status', 'update check', 'update apply', 'update timer install', 'update timer uninstall', 'localnet up', 'localnet down', 'localnet status', 'uninstall', 'up', 'switch', 'models', 'answer-test', 'spec', 'agent-rules', 'net-policy', 'version']
 
 
 def version(args):

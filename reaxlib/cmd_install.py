@@ -96,7 +96,12 @@ def human(command, action, why, steps, link=None):
 
 
 def pool_of(d, name):
-    return next((p for p in d['pools'] if p['id'] == name), None)
+    """A legacy pool, or a pool-shaped view of a `models[]` entry (reaxlib/models.py)."""
+    found = next((p for p in d['pools'] if p['id'] == name), None)
+    if found is None and d.get('models'):
+        from .models import pool_view
+        found = pool_view(d, name)
+    return found
 
 
 def gate(d, mode, confirm=False):
@@ -202,7 +207,7 @@ GGUF_POOLS = ('s1-lite', 's1-cpu')
 
 
 def weights_dir(home, pool):
-    if (pool.get('runtime') or {}).get('contract'):
+    if (pool.get('runtime') or {}).get('contract') or pool.get('catalog'):
         return home / 'weights' / pool['id'] / pool['weights']['revision']
     return home / 'weights' / pool['id']
 
@@ -251,7 +256,7 @@ def render(home, d, config, source=None):
     if any(not re.fullmatch(r'[A-Za-z0-9_.-]+', str(x)) or x in ('.', '..') for x in (config.get('wallet_name', 'reax'), hotkey)):
         raise ValueError('Wallet and hotkey names must be single safe path components')
     port = config.get('miner_port', 8091)
-    if type(port) is not int or not 1024 <= port <= 65535 or port in SIDECAR_PORTS:
+    if type(port) is not int or not 1024 <= port <= 65535 or port in SIDECAR_PORTS or port in d['requirements']['never_publish_ports']:
         raise ValueError('miner_port must be an integer 1024–65535 excluding sidecar ports')
     if config.get('external_ip'):
         import ipaddress
@@ -263,17 +268,23 @@ def render(home, d, config, source=None):
         if not valid_ip:
             raise ValueError('external_ip must be a global IPv4 or IPv6 literal')
     services = ['services:']
+    if pool.get('catalog') and not pool.get('image_ref'):
+        raise ValueError('The runtime image of this model is not pinned in the release descriptor.')
+    gpu_index = config.get('gpu_index')
+    if gpu_index is not None and (type(gpu_index) is not int or not 0 <= gpu_index <= 64):
+        raise ValueError('gpu_index must be a small non-negative integer')
     for name, imagekey in [('runtime', key), ('miner', 'miner')]:
-        services += ['  ' + name + ':', '    image: ' + q(image_ref(d, imagekey)), '    user: ' + q(uid),
+        ref = pool['image_ref'] if name == 'runtime' and pool.get('catalog') else image_ref(d, imagekey)
+        services += ['  ' + name + ':', '    image: ' + q(ref), '    user: ' + q(uid),
                      '    init: true', '    network_mode: host', '    restart: unless-stopped', '    cap_drop: [ALL]', '    security_opt: ["no-new-privileges:true"]', '    logging:', '      driver: json-file', '      options:', '        max-size: "10m"', '        max-file: "3"']
-        if private and source:
+        if private and source and not (pool.get('catalog') and name == 'runtime'):
             runtime_dir = 'runtimes/s1-gguf' if gguf else 'runtimes/' + pool['id']
             services += ['    build:', '      context: ' + q(str(source)), '      dockerfile: ' + q('Dockerfile' if name == 'miner' else runtime_dir + ('/Dockerfile.jetson' if on_jetson else '/Dockerfile'))]
         if name == 'runtime':
             runtime_env = ['      ' + k + ': ' + q(v) for k, v in sorted(pool_runtime_env(pool, config).items())]
             ccfix = ['      - ' + q(config['ccfix_dir'] + ':' + CCFIX_MOUNT + ':ro')] if pool_ccfix(pool, config) else []
             runtime = pool.get('runtime') or {}
-            host_var, port_var = (runtime.get('host_var', 'RUNTIME_HOST'), runtime.get('port_var', 'RUNTIME_PORT')) if runtime.get('contract') else (('RUNTIME_HOST', 'RUNTIME_PORT') if pool['id'] == 's1-fast' or gguf else ('RUNE_HOST', 'RUNE_PORT'))
+            host_var, port_var = (runtime.get('host_var', 'RUNTIME_HOST'), runtime.get('port_var', 'RUNTIME_PORT')) if runtime.get('contract') or pool.get('catalog') else (('RUNTIME_HOST', 'RUNTIME_PORT') if pool['id'] == 's1-fast' or gguf else ('RUNE_HOST', 'RUNE_PORT'))
             if runtime.get('contract') == 'mammoth-reference/1':
                 configs = verified_configs(runtime)
                 services += ['    read_only: true', '    tmpfs:', '      - ' + q(runtime['tmpfs']), '    shm_size: ' + q(runtime['shm_size']), '    pids_limit: ' + str(runtime['pids_limit'])]
@@ -289,8 +300,11 @@ def render(home, d, config, source=None):
             services += ['    volumes:', '      - ' + q(token + ':/run/runtime-token:ro'),
                          '      - ' + q(str(weights_dir(home, pool)) + ':/model:ro')] + ccfix
             if nvidia and not on_jetson:
+                # --gpu N pins the sidecar to one GPU of a multi-GPU machine (device_ids and count are mutually exclusive in compose)
                 services += ['    deploy:', '      resources:', '        reservations:',
-                             '          devices:', '            - driver: nvidia', '              count: 1', '              capabilities: [gpu]']
+                             '          devices:', '            - driver: nvidia',
+                             '              count: 1' if gpu_index is None else '              device_ids: [' + q(str(gpu_index)) + ']',
+                             '              capabilities: [gpu]']
         else:
             services += ['    env_file: ' + q(str(home / 'miner.env')),
                          '    depends_on:', '      runtime:', '        condition: service_healthy',
@@ -309,6 +323,8 @@ def render(home, d, config, source=None):
               'REAX_EXTERNAL_PORT': config.get('miner_port', 8091)}
     if pool.get('tier', 'gpu') != 'gpu' or pool.get('dev_only'):
         values['REAX_FEATURE_TIERED_POOLS'] = '1'  # the miner config needs the tier switch for s1-lite / s1-cpu
+    for key_, value_ in sorted((pool.get('miner_env') or {}).items()):
+        values[key_] = value_  # per-model miner switches from the descriptor (validated: REAX_* keys, plain values)
     if pool.get('dev_only'):
         values['REAX_ALLOW_DEV_MODELS'] = '1'  # refused on mainnet by the miner; install already refuses dev pools there
     if any('\n' in str(v) or '\r' in str(v) for v in values.values()):
@@ -340,6 +356,13 @@ def install(args):
         return Result('install', 'blocked', 'Pool {} is a development-network pool and cannot be installed on mainnet; use --mode localnet or testnet, or choose a launch pool.'.format(name), exit_code=12)
     if 'manifest_id' in config and config['manifest_id'] != pool['manifest_id'] and not getattr(args, 'accept_manifest_change', False):
         return human('install', 'Approve the manifest change.', 'A changed manifest resets the miner score.', ['Review and repeat with --accept-manifest-change.'])
+    if pool.get('catalog') and mode != 'localnet':
+        from .models import availability, get
+        ok, reason = availability(d, get(d, name))
+        if not ok:
+            return Result('install', 'blocked', reason, exit_code=12, next=[{'command': 'reaxctl models', 'why': 'List the models you can mine now.'}])
+        if not d['images'].get('public'):
+            return Result('install', 'blocked', 'Release images are not yet marked available.', exit_code=12)
     if mode != 'localnet' and not pool_enabled(pool) and not (pool.get('dev_only') and mode == 'testnet'):
         return Result('install', 'blocked', 'This pool is not enabled.', exit_code=12)
     if getattr(args, 'cc_fix', False) and not (pool.get('runtime') or {}).get('cc_fix_env'):
@@ -351,7 +374,8 @@ def install(args):
     ancestor = home
     while not ancestor.exists():
         ancestor = ancestor.parent
-    required = 1 if mode == 'localnet' else d['requirements']['disk_gb'][name]
+    from .models import disk_required
+    required = 1 if mode == 'localnet' else disk_required(d, pool)
     if shutil.disk_usage(str(ancestor)).free < required * 1024 ** 3:
         return Result('install', 'blocked', 'Free at least {} GB before installing.'.format(required), exit_code=10)
     if mode != 'localnet':
@@ -386,6 +410,8 @@ def install(args):
         config.update(cc_fix=True, ccfix_dir=str(fixdir))
     if mode == 'mainnet':
         config['mainnet_confirmed'] = True
+    if getattr(args, 'gpu', None) is not None:
+        config['gpu_index'] = args.gpu
     config.setdefault('wallet_name', 'reax')
     config.setdefault('hotkey_name', 'miner1')
     config.setdefault('miner_port', 8091)
@@ -446,4 +472,5 @@ def register(sub):
     p.add_argument('--accept-manifest-change', action='store_true')
     p.add_argument('--cc-fix', action='store_true', help='legacy Rune-only UVA fix; refused for mammoth-1')
     p.add_argument('--confirm-mainnet', action='store_true')
+    p.add_argument('--gpu', type=int, default=None, metavar='N', help='use GPU number N of a multi-GPU machine for the runtime sidecar')
     p.set_defaults(func=install)

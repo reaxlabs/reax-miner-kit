@@ -107,3 +107,26 @@ Documented limitations: serialize install/update/timer using flock on $REAX_HOME
 
 
 Kit 0.1.9: s1-pro uses mammoth-1 with manifest `3f3558e583b0a1d6` and pinned FLA configs. See [S1-PRO.md](docs/S1-PRO.md). Runtime REAX_MODEL is mammoth-1; miner REAX_MODEL remains s1-pro. The old Rune CC fix is refused. Other pool runtime pins are unchanged; explicit update apply replaces the shared miner image.
+
+
+## 0.2.0 contract additions (one-line setup and switch)
+
+- `up --model ID [--gpu N] [--eu] [--dry-run] [--wait-minutes N] [--wait-registered SECONDS] [--no-service] [--confirm-mainnet]` — default mode `mainnet`.
+  Steps, each idempotent, stopping at the first failure: `doctor` (read-only host check for the model) → `install` (weights and runtime image by digest;
+  skipped when the model, release, manifest and weights revision recorded in `state.json` already match) → `runtime` (sidecar only, waits for health) →
+  `selfcheck`, or `answer-test` with `--eu` → `wallet` (hotkey file and public coldkey address must exist; otherwise `needs_human`, exit 11) → `miner` (`compose up -d`,
+  the miner publishes the commitment itself) → `service` (best effort; a failure is a warning) → `register` (the registration handoff, `needs_human` until the miner log shows it).
+  A finished setup returns `data.already_set_up: true` and the status without changing anything. Another installed model returns `needs_human` pointing to `switch`.
+  `--dry-run` runs only read-only probes (host facts, one `nvidia-smi`), prints `data.steps`, `data.ready`, `data.would_block` and exits 0; exit 12 when the model is not installable (`coming`, `retired`, unpinned).
+- `switch --model ID [--purge-old] [--dry-run]` — refuses before touching anything when the model is not live or does not fit. Order: snapshot (`$REAX_HOME/rollback/switch-<ns>/`: compose, env, config, state) →
+  fetch new weights and image while the old miner runs → stop → start the new runtime and wait → selfcheck (or answer test for an EU setup) → start the miner → check the commitment evidence.
+  Any failure after the snapshot restores the files and restarts the old runtime and miner (`data.rolled_back`, `data.restart_failed`). The systemd miner service is paused during the switch.
+  Old weights are kept unless `--purge-old`, which removes only `$REAX_HOME/weights/<old id>` after success. `data.commitment`, `data.commitment_before` and `data.check_commitment` (the `reax-commit show` command) are printed.
+- `models [--json] [--all] [--status S]` — `data.models[]`: id, name, pot, status, kind (`pool`|`model`), installable, needs, accelerator, gpu, disk_gb, weights, runtime{image,digest,port}, unit_throughput,
+  manifest_id, commitment, fits, fit_reasons, installed. Machine facts come from the same probes as `doctor` (read-only).
+- `answer-test` — runs `reax-answertest --model <id> --json` from PATH or the miner image against the loopback runtime sidecar. Exit 0 pass, 20 fail, 10 cannot run, 12 the tool does not exist yet.
+- `install --gpu N` pins the runtime sidecar to GPU N (`device_ids`).
+- Descriptor: optional `models[]` and optional pool fields `status`, `pot`, `unit_throughput`; see `releases/README.md`. Model entries are validated as strictly as pools: trusted GHCR owners,
+  sha256 digests, 40-hex revisions, sidecar port listed in `never_publish_ports` and unique, no reserved environment variables. A `live` model may not carry `TBD-*` placeholders.
+- `install.sh` — see `docs/ONE-LINE.md`. Hard rules: no sudo without `--install-deps` (fixed apt list), never overwrites or modifies a directory it does not own, refuses a different origin, a dirty checkout and a commit mismatch,
+  runs only `reaxctl models` and `reaxctl up`, and passes `--confirm-mainnet` only as the person's approval of the one-liner they ran. Safety rule 3 is unchanged for direct `reaxctl` use.

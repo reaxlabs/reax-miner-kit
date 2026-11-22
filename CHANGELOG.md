@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0 (unreleased): one-line setup and one-line model switch
+
+- `install.sh`: the one-line bootstrap (`curl -fsSL .../<tag>/install.sh | bash -s -- --model <id> [--eu]`). It checks OS, Python, git, Docker and the NVIDIA container toolkit and prints exact fix commands, clones the kit at a pinned tag, checks the commit (`--commit`, from a second place) and the bundled release descriptor, then runs `reaxctl up`. No sudo unless `--install-deps` (apt packages `git python3 python3-venv ca-certificates` only). It never touches a coldkey, never pays and never registers a hotkey. Running it again changes nothing.
+- `reaxctl up --model <id> [--gpu N] [--eu] [--dry-run]`: doctor, install (weights and runtime image by digest), runtime start, selfcheck, wallet check, miner start, service install, registration handoff. Stops at the first failure with one next step; every step is idempotent; a finished setup only prints its status.
+- `reaxctl switch --model <id> [--purge-old] [--dry-run]`: fetches the new model next to the old one, swaps the runtime, runs the check, restarts the miner (it publishes the new commitment itself) and restores the old setup if the check fails. Old weights stay unless `--purge-old`.
+- `reaxctl models [--json] [--all] [--status S]`: the models from the release descriptor with status (`live`, `coming`, `retired`), hardware need and whether this machine fits.
+- `reaxctl answer-test`: EU operator check (stub): runs `reax-answertest` from PATH or the miner image when it exists and explains otherwise. `up --eu` and `switch` use it instead of the bit-identity selfcheck for EU operators.
+- Release descriptor: optional top-level `models[]` (one entry per model pot: pot id, weights repo@revision, runtime image digest, env, GPU class and minimum VRAM, unit throughput, status) and optional `status`/`pot`/`unit_throughput` on legacy `pools[]`. `releases/portfolio-example.json` shows five `coming` models. **Compatibility:** kits older than 0.2.0 reject a descriptor with a `models` key ("unknown release descriptor fields") and fall back to their bundled one with a warning; publish 0.2.0 before `releases/current.json` carries `models`.
+- `install --gpu N` pins the runtime sidecar to one GPU (`device_ids`). The miner port may not be any sidecar port listed in the descriptor's `never_publish_ports`.
+
 ## 0.1.9 — 2026-11-02
 
 - Install the active s1-pro mammoth-1 manifest with its digest-pinned engine, public weights, strict pinned FLA configs and read-only runtime contract.
