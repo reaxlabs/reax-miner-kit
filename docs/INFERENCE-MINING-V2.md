@@ -70,6 +70,6 @@ curl -fsSL https://raw.githubusercontent.com/reaxlabs/reax-miner-kit/v0.2.0/inst
 ./reaxctl models                     # every model, what it needs, whether this machine fits
 ./reaxctl switch --model <model id>  # move to another model; rolls back if the new model fails its check
 ```
-Until the start, pot models show as "coming" in `reaxctl models`; today's pools keep working unchanged.
+Until the start, `reaxctl models` lists today's pools; the pot models appear there with the release that starts the pots. Today's pools keep working unchanged.
 
 The draft [portfolio descriptor](../releases/portfolio-v1.json) contains the model IDs and pinned weight revisions. Runtime digests, manifests, weight sizes and disk requirements are placeholders; serving constraints in its notes are informational and are not enforced by this draft. There is no local descriptor option for `reaxctl models`; once a compatible release publishes the portfolio in `current.json`, use `./reaxctl models --status coming` to list the models awaiting activation. Until then the default command lists the current release pools.
