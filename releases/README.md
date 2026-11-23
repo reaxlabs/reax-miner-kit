@@ -49,7 +49,7 @@ schema checks are not a cryptographic publisher signature.
 
 ### Models (per-model pots)
 
-`models[]` is an optional top-level list: one entry per mineable model, so a new model is a new entry and not new code. `reaxctl models`, `up` and `switch` read the legacy `pools[]` and `models[]` through one catalog. Example: [portfolio-example.json](portfolio-example.json) (five `coming` models; it is an example, not a release).
+`models[]` is an optional top-level list: one entry per mineable model, so a new model is a new entry and not new code. `reaxctl models`, `up` and `switch` read the legacy `pools[]` and `models[]` through one catalog. Example: [portfolio-v1.json](portfolio-v1.json) (14 `coming` models; this is a draft, not a release). Runtime pins, manifest IDs, weight sizes and disk requirements are placeholders.
 
 | Field | Meaning |
 | --- | --- |

@@ -1,0 +1,787 @@
+{
+  "schema": "reax-release/1",
+  "release_id": "1.2.0rc11.post8.1-kit1-portfolio-v1",
+  "updated": "2026-11-23",
+  "status": {
+    "launch_status": "live",
+    "live": true,
+    "netuid": 92,
+    "network": "finney",
+    "testnet_netuid": null,
+    "notes": "Draft portfolio, not a release. Models are coming; runtime digests, manifests, weight sizes and disk requirements are placeholders and must be measured or pinned before release.",
+    "chain": {
+      "netuid": 92,
+      "network": "finney",
+      "genesis_hash": "0x2f0555cc76fc2840a25a6ea3b9637146806f1f44b090c175ffde2a7e5ab36c03",
+      "block": 9367627,
+      "block_hash": "0xd9cb0516bbb07e9208c353be6257b0875cb025828644f35b085042ffe82daeb0",
+      "block_time": "2026-10-26T11:45:12+00:00",
+      "checked_at": "2026-10-26T11:45:48.992671+00:00",
+      "sdk": "substrate-interface 1.8.1",
+      "exists": true,
+      "owner": "5GMxpAvB9iJkDtNDELhVn8GmbBz5XChnWcLaThWTJ38QmU6B",
+      "subtoken_enabled": true,
+      "first_emission_block": 9280309,
+      "subnet_emission_enabled": true,
+      "registration_allowed": true
+    }
+  },
+  "minimum_release": "1.1.0rc2",
+  "images": {
+    "miner": "ghcr.io/reaxlabs/reax-miner",
+    "s1_fast_runtime": "ghcr.io/reaxlabs/reax-s1-fast-runtime",
+    "s1_pro_runtime": "ghcr.io/reaxlabs/reax-engine-ref-mammoth",
+    "s1_lite_runtime": "ghcr.io/reaxlabs/reax-s1-lite-runtime",
+    "s1_lite_runtime_jetson": "ghcr.io/reaxlabs/reax-s1-lite-runtime-jetson",
+    "s1_cpu_runtime": "ghcr.io/reaxlabs/reax-s1-cpu-runtime",
+    "tag": "1.2.0-rc11.post8.1-kit1",
+    "digests": {
+      "miner": "sha256:4a492434622abfc8fc856439a9662da6649beb5a4cb9dbc6df4934a1560c73ff",
+      "s1_fast_runtime": "sha256:b9965270db054b1141176b0723bba111afca78ab4d4a6139a659b509084b2ab4",
+      "s1_pro_runtime": "sha256:3080a593060542bccbdaf7cf0c66593fc182d9753b3facd50206df86d93b8588",
+      "s1_lite_runtime": "sha256:73cddba2fe765586daab68795936eeba02ce0bf674019c95ad13ce194509cd9f",
+      "s1_lite_runtime_jetson": "sha256:a70007ecf52e3b40ef9361a2a7ff7e2ea6ecae947a9f68d351331912e65605ef",
+      "s1_cpu_runtime": "sha256:61b8551f4c1700c2a8ce04bb24d32dc23b0a698bff09cc031089bd07d7c11f7d"
+    },
+    "public": true,
+    "note": "Miner: source 0db24fd9aaa113beb1fb8c883cf2ecbb3fdd86aa. s1-pro uses the measured mammoth reference engine. Nothing changes for s1-fast, s1-lite and s1-cpu runtimes: their digests remain at post7; they were not rebuilt for this kit. The shared miner image changes when update apply is requested. Jetson runtime remains unmeasured on hardware."
+  },
+  "source": {
+    "git": "https://github.com/reaxlabs/reax-subnet",
+    "ref": "0db24fd9aaa113beb1fb8c883cf2ecbb3fdd86aa",
+    "public": true,
+    "commit": "0db24fd9aaa113beb1fb8c883cf2ecbb3fdd86aa"
+  },
+  "pools": [
+    {
+      "id": "s1-fast",
+      "model": "Plumb-4B (s1-fast)",
+      "weights": {
+        "repo": "crh225/plumb-4b",
+        "revision": "55de037801a8a9b9de3db5c0e16cef86210c2186",
+        "gated": false,
+        "size_gb": 9
+      },
+      "manifest_id": "ff6e01b983d48024",
+      "commitment": "reax-s1/1:s1-fast:ff6e01b983d48024",
+      "gpu": {
+        "min_vram_gb": 24,
+        "count": 1,
+        "vendor": "NVIDIA",
+        "measured": [
+          "RTX 4090",
+          "RTX PRO 6000 Blackwell",
+          "H100 80GB"
+        ],
+        "unmeasured_note": "Other cards: run scripts/calibration_s1 before serving."
+      },
+      "sidecar_port": 8101,
+      "enabled_at_launch": true
+    },
+    {
+      "id": "s1-pro",
+      "model": "baselabs/mammoth-1 (s1-pro)",
+      "weights": {
+        "repo": "baselabs/mammoth-1",
+        "revision": "61cec44c281c693992e3d6ebeb44dd3402dfa186",
+        "gated": false,
+        "size_gb": 55,
+        "format": "bf16 safetensors"
+      },
+      "manifest_id": "3f3558e583b0a1d6",
+      "commitment": "reax-s1/1:s1-pro:3f3558e583b0a1d6",
+      "gpu": {
+        "min_vram_gb": 48,
+        "count": 1,
+        "vendor": "NVIDIA",
+        "measured": [
+          "RTX PRO 6000 Blackwell Server Edition (96 GB)"
+        ],
+        "unmeasured_note": "Only RTX PRO 6000 Blackwell Server Edition (96 GB) is measured (peak 35.2 GB). Other cards have no pinned kernel configs, must pass reax-selfcheck, and are at your own risk."
+      },
+      "sidecar_port": 8102,
+      "enabled_at_launch": false,
+      "runtime": {
+        "contract": "mammoth-reference/1",
+        "minimum_kit": "0.1.9",
+        "enabled": true,
+        "host_var": "RUNTIME_HOST",
+        "port_var": "RUNTIME_PORT",
+        "env": {
+          "RUNTIME_UDS": "",
+          "REAX_MODEL": "mammoth-1",
+          "REAX_PROFILE": "reference",
+          "CIE_LAZY_LOAD": "1",
+          "REAX_MAX_WAIT_MS": "4",
+          "FLA_CACHE_MODE": "strict",
+          "FLA_CONFIG_DIR": "/opt/reax/fla-configs/rtx-pro-6000-blackwell-server",
+          "HF_HUB_OFFLINE": "1",
+          "TRANSFORMERS_OFFLINE": "1"
+        },
+        "configs": "rtx-pro-6000-blackwell-server",
+        "read_only": true,
+        "tmpfs": "/tmp:rw,exec,nosuid,nodev,size=16g",
+        "shm_size": "2g",
+        "pids_limit": 4096
+      }
+    },
+    {
+      "id": "s1-lite",
+      "model": "Plumb-4B v5 GGUF Q8_0 (s1-lite)",
+      "weights": {
+        "repo": "crh225/plumb-4b-GGUF",
+        "revision": "71c1c57e523219124f7be9c486d475d19891185f",
+        "gated": false,
+        "size_gb": 4.48,
+        "files": [
+          "plumb-4b-v5-Q8_0.gguf"
+        ]
+      },
+      "manifest_id": "8c7297e14e5e89bf",
+      "commitment": "reax-s1/1:s1-lite:8c7297e14e5e89bf",
+      "gpu": {
+        "min_vram_gb": 8,
+        "count": 1,
+        "vendor": "NVIDIA",
+        "measured": [],
+        "unmeasured_note": "NVIDIA GPU with 8 GB or more, or a Jetson Orin (JetPack 6) with 8 GB unified memory; not yet calibrated on real hardware."
+      },
+      "sidecar_port": 8103,
+      "enabled_at_launch": true,
+      "tier": "small",
+      "arch": [
+        "x86_64",
+        "aarch64"
+      ],
+      "accelerator": "nvidia",
+      "jetson": true,
+      "min_ram_gb": 8,
+      "min_cpu_cores": 4
+    },
+    {
+      "id": "s1-cpu",
+      "model": "Gutsy 0.8B v0.4 GGUF Q8_0 (s1-cpu)",
+      "weights": {
+        "repo": "kouhxp/gutsy",
+        "revision": "f9995fe26a337f1a4ea3f1a5ed38c9799e5a8f63",
+        "gated": false,
+        "size_gb": 0.81,
+        "files": [
+          "gutsy-0.8b-v04-q8_0.gguf"
+        ]
+      },
+      "manifest_id": "f2c9981f0766f2a6",
+      "commitment": "reax-s1/1:s1-cpu:f2c9981f0766f2a6",
+      "gpu": {
+        "min_vram_gb": 0,
+        "count": 0,
+        "vendor": "none"
+      },
+      "sidecar_port": 8104,
+      "enabled_at_launch": true,
+      "tier": "cpu",
+      "arch": [
+        "x86_64",
+        "aarch64"
+      ],
+      "accelerator": "none",
+      "jetson": false,
+      "min_ram_gb": 4,
+      "min_cpu_cores": 4
+    }
+  ],
+  "requirements": {
+    "cpu_cores": 4,
+    "ram_gb": 32,
+    "disk_gb": {
+      "s1-fast": 20,
+      "s1-pro": 100,
+      "s1-lite": 8,
+      "s1-cpu": 3
+    },
+    "driver_min": "R580 (CUDA 13)",
+    "python_min": "3.10",
+    "open_ports": [
+      8091
+    ],
+    "never_publish_ports": [
+      8000,
+      8101,
+      8102,
+      8103,
+      8104,
+      8105,
+      8106,
+      8107,
+      8108,
+      8109,
+      8110,
+      8111,
+      8112,
+      8113,
+      8114,
+      8115,
+      8116,
+      8117,
+      8118
+    ],
+    "os": "Linux x86_64 (also WSL2 with NVIDIA GPU passthrough)",
+    "ntp_required": true
+  },
+  "tools": {
+    "bittensor": "11.1.0",
+    "typer": "<0.27.2",
+    "huggingface_hub": ">=0.25"
+  },
+  "links": {
+    "entry": "https://reax.dev/mine/",
+    "guide": "https://reax.dev/mine/",
+    "wallet": "https://reax.dev/wallet/",
+    "register": "https://reax.dev/register/",
+    "faq": "https://reax.dev/miner-faq/",
+    "project": "https://reax.co/",
+    "competitions": "https://reax.co/competitions",
+    "competitions_doc": "https://github.com/reaxlabs/reax-subnet/blob/release/1.2-rc/docs/COMPETITIONS.md"
+  },
+  "update": {
+    "channel": "stable",
+    "auto_safe": true,
+    "manifest_change_requires_confirm": true
+  },
+  "models": [
+    {
+      "id": "reax-1-3",
+      "name": "REAX 1.3",
+      "pot": "pot-reax-1-3",
+      "status": "coming",
+      "weights": {
+        "repo": "decisionmodels/REAX-1.3",
+        "revision": "fa4bf7ee3bb56a8bc421dad090631be1c5845c2d",
+        "gated": false,
+        "size_gb": 1
+      },
+      "runtime": {
+        "image": "ghcr.io/reaxlabs/reax-model-reax-1-3",
+        "digest": "sha256:TBD-reax-1-3",
+        "port": 8105,
+        "env": {
+          "REAX_MODEL": "reax-1-3",
+          "HF_HUB_OFFLINE": "1",
+          "TRANSFORMERS_OFFLINE": "1"
+        }
+      },
+      "gpu": {
+        "class": "96 GB",
+        "min_vram_gb": 96,
+        "count": 1,
+        "vendor": "NVIDIA"
+      },
+      "unit_throughput": {
+        "unit": "decisions_per_s",
+        "per": "gpu",
+        "value": null,
+        "note": "not measured yet"
+      },
+      "manifest_id": "TBD-reax_1_3",
+      "commitment": "reax-s1/1:reax-1-3:TBD-reax_1_3",
+      "disk_gb": 1,
+      "notes": "Weight size and disk requirement are placeholders, not measured."
+    },
+    {
+      "id": "d3",
+      "name": "d3",
+      "pot": "pot-d3",
+      "status": "coming",
+      "weights": {
+        "repo": "vllm-sr/d3",
+        "revision": "62f07e54c6c3a5ff5f695107377edc43e1a86ea8",
+        "gated": false,
+        "size_gb": 1
+      },
+      "runtime": {
+        "image": "ghcr.io/reaxlabs/reax-model-d3",
+        "digest": "sha256:TBD-d3",
+        "port": 8106,
+        "env": {
+          "REAX_MODEL": "d3",
+          "HF_HUB_OFFLINE": "1",
+          "TRANSFORMERS_OFFLINE": "1"
+        }
+      },
+      "gpu": {
+        "class": "96 GB",
+        "min_vram_gb": 96,
+        "count": 1,
+        "vendor": "NVIDIA"
+      },
+      "unit_throughput": {
+        "unit": "decisions_per_s",
+        "per": "gpu",
+        "value": null,
+        "note": "not measured yet"
+      },
+      "manifest_id": "TBD-d3",
+      "commitment": "reax-s1/1:d3:TBD-d3",
+      "disk_gb": 1,
+      "notes": "Weight size and disk requirement are placeholders, not measured."
+    },
+    {
+      "id": "karpo-decision-31b",
+      "name": "Karpo Decision 31B",
+      "pot": "pot-karpo-decision-31b",
+      "status": "coming",
+      "weights": {
+        "repo": "MachinePulseAI/karpo-decision-31B",
+        "revision": "b8e6fd7463cea8662c556d6257955d7ef9c10d19",
+        "gated": false,
+        "size_gb": 1
+      },
+      "runtime": {
+        "image": "ghcr.io/reaxlabs/reax-model-karpo-decision-31b",
+        "digest": "sha256:TBD-karpo-decision-31b",
+        "port": 8107,
+        "env": {
+          "REAX_MODEL": "karpo-decision-31b",
+          "HF_HUB_OFFLINE": "1",
+          "TRANSFORMERS_OFFLINE": "1"
+        }
+      },
+      "gpu": {
+        "class": "96 GB",
+        "min_vram_gb": 96,
+        "count": 1,
+        "vendor": "NVIDIA"
+      },
+      "unit_throughput": {
+        "unit": "decisions_per_s",
+        "per": "gpu",
+        "value": null,
+        "note": "not measured yet"
+      },
+      "manifest_id": "TBD-karpo_decision_31b",
+      "commitment": "reax-s1/1:karpo-decision-31b:TBD-karpo_decision_31b",
+      "disk_gb": 1,
+      "notes": "Weight size and disk requirement are placeholders, not measured."
+    },
+    {
+      "id": "clef",
+      "name": "Clef 27B",
+      "pot": "pot-clef",
+      "status": "coming",
+      "weights": {
+        "repo": "Cloudflare/clef",
+        "revision": "171287b2571042abec9e7b99752aee58216b0ed0",
+        "gated": false,
+        "size_gb": 1
+      },
+      "runtime": {
+        "image": "ghcr.io/reaxlabs/reax-model-clef",
+        "digest": "sha256:TBD-clef",
+        "port": 8108,
+        "env": {
+          "REAX_MODEL": "clef",
+          "HF_HUB_OFFLINE": "1",
+          "TRANSFORMERS_OFFLINE": "1"
+        }
+      },
+      "gpu": {
+        "class": "96 GB",
+        "min_vram_gb": 96,
+        "count": 1,
+        "vendor": "NVIDIA"
+      },
+      "unit_throughput": {
+        "unit": "decisions_per_s",
+        "per": "gpu",
+        "value": null,
+        "note": "not measured yet"
+      },
+      "manifest_id": "TBD-clef",
+      "commitment": "reax-s1/1:clef:TBD-clef",
+      "disk_gb": 1,
+      "notes": "Weight size and disk requirement are placeholders, not measured."
+    },
+    {
+      "id": "blink-v0-3",
+      "name": "Blink v0.3 NVFP4",
+      "pot": "pot-blink-v0-3",
+      "status": "coming",
+      "weights": {
+        "repo": "PixilabAI/Blink-v0.3-26B-A4B-NVFP4",
+        "revision": "08caad20c1574fb76341ca809ff38fdb081f7d4a",
+        "gated": false,
+        "size_gb": 1
+      },
+      "runtime": {
+        "image": "ghcr.io/reaxlabs/reax-model-blink-v0-3",
+        "digest": "sha256:TBD-blink-v0-3",
+        "port": 8109,
+        "env": {
+          "REAX_MODEL": "blink-v0-3",
+          "HF_HUB_OFFLINE": "1",
+          "TRANSFORMERS_OFFLINE": "1"
+        }
+      },
+      "gpu": {
+        "class": "48 GB",
+        "min_vram_gb": 48,
+        "count": 1,
+        "vendor": "NVIDIA"
+      },
+      "unit_throughput": {
+        "unit": "decisions_per_s",
+        "per": "gpu",
+        "value": null,
+        "note": "not measured yet"
+      },
+      "manifest_id": "TBD-blink_v0_3",
+      "commitment": "reax-s1/1:blink-v0-3:TBD-blink_v0_3",
+      "disk_gb": 1,
+      "notes": "Blackwell only (NVFP4). Weight size and disk requirement are placeholders, not measured."
+    },
+    {
+      "id": "elephant-1",
+      "name": "elephant-1",
+      "pot": "pot-elephant-1",
+      "status": "coming",
+      "weights": {
+        "repo": "baselabs/elephant-1",
+        "revision": "2e80345f1e41b2c1eaff8ae2538c0ac657210c44",
+        "gated": false,
+        "size_gb": 1
+      },
+      "runtime": {
+        "image": "ghcr.io/reaxlabs/reax-model-elephant-1",
+        "digest": "sha256:TBD-elephant-1",
+        "port": 8110,
+        "env": {
+          "REAX_MODEL": "elephant-1",
+          "HF_HUB_OFFLINE": "1",
+          "TRANSFORMERS_OFFLINE": "1"
+        }
+      },
+      "gpu": {
+        "class": "24 GB",
+        "min_vram_gb": 24,
+        "count": 1,
+        "vendor": "NVIDIA"
+      },
+      "unit_throughput": {
+        "unit": "decisions_per_s",
+        "per": "gpu",
+        "value": null,
+        "note": "not measured yet"
+      },
+      "manifest_id": "TBD-elephant_1",
+      "commitment": "reax-s1/1:elephant-1:TBD-elephant_1",
+      "disk_gb": 1,
+      "notes": "bf16 only. Weight size and disk requirement are placeholders, not measured."
+    },
+    {
+      "id": "torchcast-decision-4b",
+      "name": "Torchcast Decision 4B",
+      "pot": "pot-torchcast-decision-4b",
+      "status": "coming",
+      "weights": {
+        "repo": "torchcast-ai/torchcast-decision-4b",
+        "revision": "492bfb19662f3c6e601cc9c4bd2911ac95609ed4",
+        "gated": false,
+        "size_gb": 1
+      },
+      "runtime": {
+        "image": "ghcr.io/reaxlabs/reax-model-torchcast-decision-4b",
+        "digest": "sha256:TBD-torchcast-decision-4b",
+        "port": 8111,
+        "env": {
+          "REAX_MODEL": "torchcast-decision-4b",
+          "HF_HUB_OFFLINE": "1",
+          "TRANSFORMERS_OFFLINE": "1"
+        }
+      },
+      "gpu": {
+        "class": "16 GB",
+        "min_vram_gb": 16,
+        "count": 1,
+        "vendor": "NVIDIA"
+      },
+      "unit_throughput": {
+        "unit": "decisions_per_s",
+        "per": "gpu",
+        "value": null,
+        "note": "not measured yet"
+      },
+      "manifest_id": "TBD-torchcast_decision_4b",
+      "commitment": "reax-s1/1:torchcast-decision-4b:TBD-torchcast_decision_4b",
+      "disk_gb": 1,
+      "notes": "Up to 8 requests in flight. Weight size and disk requirement are placeholders, not measured."
+    },
+    {
+      "id": "kev-4b",
+      "name": "Kev 4B",
+      "pot": "pot-kev-4b",
+      "status": "coming",
+      "weights": {
+        "repo": "jaredpalmer/kev-4b",
+        "revision": "6cfce5c2fa4b4bd64026336ab649c5ca78857d52",
+        "gated": false,
+        "size_gb": 1
+      },
+      "runtime": {
+        "image": "ghcr.io/reaxlabs/reax-model-kev-4b",
+        "digest": "sha256:TBD-kev-4b",
+        "port": 8112,
+        "env": {
+          "REAX_MODEL": "kev-4b",
+          "HF_HUB_OFFLINE": "1",
+          "TRANSFORMERS_OFFLINE": "1"
+        }
+      },
+      "gpu": {
+        "class": "16 GB",
+        "min_vram_gb": 16,
+        "count": 1,
+        "vendor": "NVIDIA"
+      },
+      "unit_throughput": {
+        "unit": "decisions_per_s",
+        "per": "gpu",
+        "value": null,
+        "note": "not measured yet"
+      },
+      "manifest_id": "TBD-kev_4b",
+      "commitment": "reax-s1/1:kev-4b:TBD-kev_4b",
+      "disk_gb": 1,
+      "notes": "One request at a time. Weight size and disk requirement are placeholders, not measured."
+    },
+    {
+      "id": "laya",
+      "name": "Laya 421M",
+      "pot": "pot-laya",
+      "status": "coming",
+      "weights": {
+        "repo": "convaiinnovations/laya",
+        "revision": "fd4f9dbcf4fde222fd43174bdd4c3b08b789e4e1",
+        "gated": false,
+        "size_gb": 1
+      },
+      "runtime": {
+        "image": "ghcr.io/reaxlabs/reax-model-laya",
+        "digest": "sha256:TBD-laya",
+        "port": 8113,
+        "env": {
+          "REAX_MODEL": "laya",
+          "HF_HUB_OFFLINE": "1",
+          "TRANSFORMERS_OFFLINE": "1"
+        }
+      },
+      "gpu": {
+        "class": "CPU",
+        "min_vram_gb": 0,
+        "count": 0,
+        "vendor": "none"
+      },
+      "unit_throughput": {
+        "unit": "decisions_per_s",
+        "per": "machine",
+        "value": null,
+        "note": "not measured yet"
+      },
+      "manifest_id": "TBD-laya",
+      "commitment": "reax-s1/1:laya:TBD-laya",
+      "disk_gb": 1,
+      "notes": "CPU torch or ONNX, or GPU fp32 only. Weight size and disk requirement are placeholders, not measured.",
+      "accelerator": "none",
+      "tier": "cpu"
+    },
+    {
+      "id": "torchcast-decision-31b",
+      "name": "Torchcast Decision 31B",
+      "pot": "pot-torchcast-decision-31b",
+      "status": "coming",
+      "weights": {
+        "repo": "torchcast-ai/torchcast-decision-31b",
+        "revision": "9f59dd971a096d7082690a5cda5aa63561473fc9",
+        "gated": false,
+        "size_gb": 1
+      },
+      "runtime": {
+        "image": "ghcr.io/reaxlabs/reax-model-torchcast-decision-31b",
+        "digest": "sha256:TBD-torchcast-decision-31b",
+        "port": 8114,
+        "env": {
+          "REAX_MODEL": "torchcast-decision-31b",
+          "HF_HUB_OFFLINE": "1",
+          "TRANSFORMERS_OFFLINE": "1"
+        }
+      },
+      "gpu": {
+        "class": "96 GB",
+        "min_vram_gb": 96,
+        "count": 1,
+        "vendor": "NVIDIA"
+      },
+      "unit_throughput": {
+        "unit": "decisions_per_s",
+        "per": "gpu",
+        "value": null,
+        "note": "not measured yet"
+      },
+      "manifest_id": "TBD-torchcast_decision_31b",
+      "commitment": "reax-s1/1:torchcast-decision-31b:TBD-torchcast_decision_31b",
+      "disk_gb": 1,
+      "notes": "Weight size and disk requirement are placeholders, not measured."
+    },
+    {
+      "id": "pplx-decider-v1-3",
+      "name": "Perplexity Decider v1.3",
+      "pot": "pot-pplx-decider-v1-3",
+      "status": "coming",
+      "weights": {
+        "repo": "perplexity-ai/pplx-decider-v1.3",
+        "revision": "9c2ebb27470d3dec2ad7ab727727e40d142c7213",
+        "gated": false,
+        "size_gb": 1
+      },
+      "runtime": {
+        "image": "ghcr.io/reaxlabs/reax-model-pplx-decider-v1-3",
+        "digest": "sha256:TBD-pplx-decider-v1-3",
+        "port": 8115,
+        "env": {
+          "REAX_MODEL": "pplx-decider-v1-3",
+          "HF_HUB_OFFLINE": "1",
+          "TRANSFORMERS_OFFLINE": "1"
+        }
+      },
+      "gpu": {
+        "class": "96 GB",
+        "min_vram_gb": 96,
+        "count": 1,
+        "vendor": "NVIDIA"
+      },
+      "unit_throughput": {
+        "unit": "decisions_per_s",
+        "per": "gpu",
+        "value": null,
+        "note": "not measured yet"
+      },
+      "manifest_id": "TBD-pplx_decider_v1_3",
+      "commitment": "reax-s1/1:pplx-decider-v1-3:TBD-pplx_decider_v1_3",
+      "disk_gb": 1,
+      "notes": "Weight size and disk requirement are placeholders, not measured."
+    },
+    {
+      "id": "clef-flash",
+      "name": "Clef Flash",
+      "pot": "pot-clef-flash",
+      "status": "coming",
+      "weights": {
+        "repo": "Cloudflare/clef-flash",
+        "revision": "22b75507981345858dd152fbd9a6f8c0c4068b0a",
+        "gated": false,
+        "size_gb": 1
+      },
+      "runtime": {
+        "image": "ghcr.io/reaxlabs/reax-model-clef-flash",
+        "digest": "sha256:TBD-clef-flash",
+        "port": 8116,
+        "env": {
+          "REAX_MODEL": "clef-flash",
+          "HF_HUB_OFFLINE": "1",
+          "TRANSFORMERS_OFFLINE": "1"
+        }
+      },
+      "gpu": {
+        "class": "24 GB",
+        "min_vram_gb": 24,
+        "count": 1,
+        "vendor": "NVIDIA"
+      },
+      "unit_throughput": {
+        "unit": "decisions_per_s",
+        "per": "gpu",
+        "value": null,
+        "note": "not measured yet"
+      },
+      "manifest_id": "TBD-clef_flash",
+      "commitment": "reax-s1/1:clef-flash:TBD-clef_flash",
+      "disk_gb": 1,
+      "notes": "Weight size and disk requirement are placeholders, not measured."
+    },
+    {
+      "id": "autotrust-decider-pro-35b",
+      "name": "AutoTrust Decider Pro 35B",
+      "pot": "pot-autotrust-decider-pro-35b",
+      "status": "coming",
+      "weights": {
+        "repo": "autotrust/AutoTrust-Decider-Pro-35B",
+        "revision": "a5d0d580bb9324f0f4c07dcba5c5ca91e813e7c9",
+        "gated": false,
+        "size_gb": 1
+      },
+      "runtime": {
+        "image": "ghcr.io/reaxlabs/reax-model-autotrust-decider-pro-35b",
+        "digest": "sha256:TBD-autotrust-decider-pro-35b",
+        "port": 8117,
+        "env": {
+          "REAX_MODEL": "autotrust-decider-pro-35b",
+          "HF_HUB_OFFLINE": "1",
+          "TRANSFORMERS_OFFLINE": "1"
+        }
+      },
+      "gpu": {
+        "class": "96 GB",
+        "min_vram_gb": 96,
+        "count": 1,
+        "vendor": "NVIDIA"
+      },
+      "unit_throughput": {
+        "unit": "decisions_per_s",
+        "per": "gpu",
+        "value": null,
+        "note": "not measured yet"
+      },
+      "manifest_id": "TBD-autotrust_decider_pro_35b",
+      "commitment": "reax-s1/1:autotrust-decider-pro-35b:TBD-autotrust_decider_pro_35b",
+      "disk_gb": 1,
+      "notes": "Weight size and disk requirement are placeholders, not measured."
+    },
+    {
+      "id": "mammoth-1",
+      "name": "mammoth-1",
+      "pot": "pot-mammoth-1",
+      "status": "coming",
+      "weights": {
+        "repo": "baselabs/mammoth-1",
+        "revision": "858aab610d4d124315ebf72d2f36c5e7341f758f",
+        "gated": false,
+        "size_gb": 1
+      },
+      "runtime": {
+        "image": "ghcr.io/reaxlabs/reax-model-mammoth-1",
+        "digest": "sha256:TBD-mammoth-1",
+        "port": 8118,
+        "env": {
+          "REAX_MODEL": "mammoth-1",
+          "HF_HUB_OFFLINE": "1",
+          "TRANSFORMERS_OFFLINE": "1"
+        }
+      },
+      "gpu": {
+        "class": "96 GB",
+        "min_vram_gb": 96,
+        "count": 1,
+        "vendor": "NVIDIA"
+      },
+      "unit_throughput": {
+        "unit": "decisions_per_s",
+        "per": "gpu",
+        "value": null,
+        "note": "not measured yet"
+      },
+      "manifest_id": "TBD-mammoth_1",
+      "commitment": "reax-s1/1:mammoth-1:TBD-mammoth_1",
+      "disk_gb": 1,
+      "notes": "EU operators only. Weight size and disk requirement are placeholders, not measured."
+    }
+  ]
+}

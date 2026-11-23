@@ -24,15 +24,29 @@ class DescriptorModelsTest(unittest.TestCase):
 
     def test_example_models_are_all_coming_with_placeholders(self):
         example = example_release()
-        self.assertGreaterEqual(len(example['models']), 5)
+        self.assertEqual(len(example['models']), 14)
         for model in example['models']:
             self.assertEqual(model['status'], 'coming')
             self.assertTrue(models.is_placeholder(model['runtime']['digest']), model['id'])
-            self.assertTrue(models.is_placeholder(model['weights']['revision']), model['id'])
+            self.assertRegex(model['weights']['revision'], r'^[0-9a-f]{40}$')
+            self.assertIsNone(model['unit_throughput']['value'])
             self.assertEqual(model['commitment'], 'reax-s1/1:{}:{}'.format(model['id'], model['manifest_id']))
         for entry in models.catalog(example):
             if entry['kind'] == 'model':
                 self.assertFalse(models.availability(example, entry)[0])
+
+    def test_portfolio_hardware_and_serving_notes(self):
+        rows = {m['id']: m for m in example_release()['models']}
+        self.assertEqual(rows['mammoth-1']['notes'].split('.')[0], 'EU operators only')
+        self.assertEqual(rows['blink-v0-3']['gpu']['min_vram_gb'], 48)
+        self.assertIn('Blackwell only', rows['blink-v0-3']['notes'])
+        self.assertEqual(rows['kev-4b']['gpu']['min_vram_gb'], 16)
+        self.assertIn('One request at a time', rows['kev-4b']['notes'])
+        self.assertIn('bf16 only', rows['elephant-1']['notes'])
+        self.assertIn('Up to 8 requests in flight', rows['torchcast-decision-4b']['notes'])
+        self.assertEqual(rows['laya']['accelerator'], 'none')
+        self.assertIn('CPU torch or ONNX, or GPU fp32 only', rows['laya']['notes'])
+        self.assertNotIn('bison-1', rows)
 
     def test_model_fields_are_parsed(self):
         release = release_with(live_model(unit_throughput={'unit': 'decisions_per_s', 'per': 'gpu', 'value': None, 'note': 'unmeasured'}))
@@ -213,7 +227,7 @@ class ModelsCommandTest(unittest.TestCase):
         self.assertEqual(rows['reax-1-3']['status'], 'coming')
         self.assertFalse(rows['reax-1-3']['installable'])
         self.assertIn('96+ GB', rows['reax-1-3']['needs'])
-        self.assertEqual(rows['torchcast-decision-31b']['unit_throughput']['value'], 120)
+        self.assertIsNone(rows['torchcast-decision-31b']['unit_throughput']['value'])
         self.assertEqual(rows['s1-fast']['pot'], 's1-fast')
         self.assertEqual(rows['s1-fast']['runtime']['port'], 8101)
         self.assertEqual([r['status'] for r in result['data']['models']], sorted((r['status'] for r in result['data']['models']), key={'live': 0, 'coming': 1, 'retired': 2}.get))

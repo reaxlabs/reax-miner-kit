@@ -18,7 +18,7 @@ def base_release():
 
 
 def example_release():
-    return json.loads((ROOT / 'releases' / 'portfolio-example.json').read_text())
+    return json.loads((ROOT / 'releases' / 'portfolio-v1.json').read_text())
 
 
 def live_model(mid='kev-4b', port=8105, **over):

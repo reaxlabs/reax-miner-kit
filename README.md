@@ -14,6 +14,8 @@ Read this before you spend anything.
 - Keep your coldkey off the mining box. Only a hotkey belongs on that machine; never give a coldkey or recovery phrase to this kit, an agent or anyone else.
 - The kit is MIT licensed software provided as is, without warranty. Review what an agent runs on your behalf.
 
+For the planned per-model pots, see [Inference mining v2](docs/INFERENCE-MINING-V2.md).
+
 ## One-line setup
 
 On a Linux machine with an NVIDIA GPU (or no GPU for the small CPU model), one line installs the software, downloads the model and starts the miner. Pick a model from https://reax.dev/mine/ (the example uses `s1-fast`; add `--list` instead of `--model` to see every model and what it needs):
