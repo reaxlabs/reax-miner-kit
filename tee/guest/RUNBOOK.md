@@ -1,6 +1,6 @@
 # Confidential GPU guest: operator runbook (T1 prototype)
 
-**Not production-ready.** T1 is operator-controlled and does not prove the software or protect customer data from operator root. A verified remote verdict, an approved serving image and a working v2 agent are required before customer traffic. `PROBE-1.md` records the live observations. The installer and boot chain passed live on four Verda CC VMs on 24 Nov (incl. the isolated staging E2E); the egress firewall has not been tested live yet. The binding contract is implemented in `agent/` and `teeverify/binding.py`.
+**Not production-ready.** T1 is operator-controlled and does not prove the software or protect customer data from operator root. A verified remote verdict, an approved serving image and a working v2 agent are required before customer traffic. The installer and boot chain passed live on four Verda CC VMs on 24 Nov (incl. the isolated staging E2E); the egress firewall has not been tested live yet. The binding contract is implemented in `agent/` and `teeverify/binding.py`.
 
 ## Platform and installation
 
@@ -32,7 +32,7 @@ The approved image must disable request/prompt logging and listen on port 8080. 
 
 Create `/etc/sn92/wg0.template` root-owned mode 600, without `[Interface]` or a private key, using the gateway's assigned `Address`, peer `PublicKey`, `AllowedIPs`, `Endpoint` and `PersistentKeepalive`. `sn92-wg-key` creates the private key in `/run/sn92` on boot and writes its public key to `/run/sn92/wg-public`. Register the new public key after each boot and wait for a fresh bound verdict. Never send the private key.
 
-Install and configure the lead-reviewed v2 agent and its unit using `agent/README.md`; the old guest agent is v1 and does not implement the binding contract. Start WireGuard, the agent, and serving only after reviewing their actual configuration and local checks. The gateway must enforce the verdict, current policy, expiry and registered WireGuard key; service state alone does not gate traffic. Do not share quotes, keys, tokens or request bodies in logs.
+Install and configure the v2 agent and its unit using `agent/README.md`; the old guest agent is v1 and does not implement the binding contract. Start WireGuard, the agent, and serving only after reviewing their actual configuration and local checks. The gateway must enforce the verdict, current policy, expiry and registered WireGuard key; service state alone does not gate traffic. Do not share quotes, keys, tokens or request bodies in logs.
 
 ## Egress lockdown
 
