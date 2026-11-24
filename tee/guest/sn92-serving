@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# shellcheck source=/dev/null
+source /etc/sn92/config
+[[ ${SN92_SERVING_IMAGE:-} =~ ^[^[:space:]@]+@sha256:[0-9a-f]{64}$ ]] || { echo 'Digest-pinned serving image required' >&2; exit 1; }
+[[ ${SN92_WG_IPV4:-} =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'WireGuard IPv4 required' >&2; exit 1; }
+# The approved image entrypoint must itself disable request/prompt logging.
+exec podman run --rm --name sn92-serving --pull=never --device nvidia.com/gpu=all --tmpfs /tmp:rw,nosuid,nodev,noexec --publish "$SN92_WG_IPV4:8080:8080/tcp" "$SN92_SERVING_IMAGE"

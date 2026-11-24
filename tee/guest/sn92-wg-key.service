@@ -1,0 +1,10 @@
+[Unit]
+Description=SN92 ephemeral WireGuard identity
+Before=wg-quick@wg0.service
+[Service]
+Type=oneshot
+RuntimeDirectory=sn92
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=yes
+ExecStart=/usr/local/libexec/sn92/sn92-wg-key
+RemainAfterExit=yes

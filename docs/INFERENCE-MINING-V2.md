@@ -45,7 +45,7 @@ These rules and the model list describe the planned validator release. The start
     global and EU. From **Thursday 3 December 2026**, GPU-hours with a valid TEE attestation count 1.5x toward your pot
     share. From **Thursday 17 December 2026**, TEE is required in every pot, provided at least two TEE operators serve each
     listed model on 10 December; this is confirmed in #92 on 10 December. TEE-capable GPUs: RTX PRO 6000 Server Edition,
-    H100, H200 or B200 with confidential computing on. Setup notes for TEE nodes come with the 3 December release. The EU
+    H100, H200 or B200 with confidential computing on. Setup notes for TEE nodes: [TEE-OPERATOR.md](TEE-OPERATOR.md). The EU
     layer already requires a TEE (rule 8).
 
 Nothing already earned is taken away. Rewards are variable subnet emissions and can be zero.

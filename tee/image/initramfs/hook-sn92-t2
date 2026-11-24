@@ -1,0 +1,11 @@
+#!/bin/sh
+# SN92 T2 initramfs hook: adds the tools and modules the measured mountroot needs.
+# Only used through `mkinitramfs -d <build confdir>` from build-on-verda.sh; never installed in /etc.
+PREREQ=""
+prereqs() { echo "$PREREQ"; }
+case "$1" in prereqs) prereqs; exit 0;; esac
+. /usr/share/initramfs-tools/hook-functions
+copy_exec /usr/sbin/veritysetup /sbin
+copy_exec /usr/sbin/losetup /sbin
+copy_exec /usr/sbin/blkid /sbin
+manual_add_modules dm_mod dm_verity overlay squashfs loop ext4 virtio_blk virtio_pci

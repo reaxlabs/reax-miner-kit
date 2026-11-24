@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+# RuntimeDirectory is tmpfs; a restart in the same boot retains the same key.
+install -d -m 0700 /run/sn92 /etc/wireguard
+if [[ ! -s /run/sn92/wg-private ]]; then wg genkey > /run/sn92/wg-private; fi
+wg pubkey < /run/sn92/wg-private > /run/sn92/wg-public
+# This operator-supplied file has [Interface] Address and [Peer], but no PrivateKey.
+[[ -r /etc/sn92/wg0.template ]] || { echo 'Missing WireGuard template' >&2; exit 1; }
+if grep -Eiq '^[[:space:]]*PrivateKey[[:space:]]*=' /etc/sn92/wg0.template; then echo 'PrivateKey in template forbidden' >&2; exit 1; fi
+# Put the runtime configuration in /run and link it; never persist the private key.
+{ printf '[Interface]\nPrivateKey = '; cat /run/sn92/wg-private; cat /etc/sn92/wg0.template; } > /run/sn92/wg0.conf
+chmod 600 /run/sn92/wg0.conf
+if [[ -e /etc/wireguard/wg0.conf && ! -L /etc/wireguard/wg0.conf ]]; then echo 'Refusing to overwrite existing wg0.conf' >&2; exit 1; fi
+ln -sfn /run/sn92/wg0.conf /etc/wireguard/wg0.conf

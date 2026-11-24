@@ -1,0 +1,37 @@
+{
+ "schema": "sn92-t2-golden-v1",
+ "variant": "release",
+ "platform": "Verda 1RTXPRO6000.30V.CC, image 24.04.cuda13.4.cc",
+ "kernel_release": "6.8.0-149-generic",
+ "measure": {
+  "mode": "snp",
+  "predicted_launch_digest": "f7375d2bf39370f66ea5c176b88a918872a91812f25e4905f3767925d56d4f53dca57bd3292604c996755a079fa8e436",
+  "tool": "sev-snp-measure==0.0.13",
+  "vcpu_type": "EPYC-Turin",
+  "vcpus": 30
+ },
+ "artifacts_sha256": {
+  "initrd.img": "23a5ebc56d8a8b19dd05d869911b5b42c220e619aedb22da39456695b624b2d0",
+  "kernel:/boot/vmlinuz-6.8.0-149-generic": "9e9bb539fbf5e25c3fa737180e3586dacd0922257cdffe319daf8e5ceecaeaf0",
+  "ovmf:/boot/OVMF.amdsev.fd": "fea1855b6c983324246e6d3fb6642be200c0a38fd17b94884a45130ffb0b3a81",
+  "rootfs.squashfs": "f2842831cd38b82c07a099a15fe7aaa67b6a559ffd265161d5d05dc8aff53c9a",
+  "rootfs.verity": "04b9f41e6468dd11691ff9bb4f73090615c3418f588db0a6f1a98eafe94c4693"
+ },
+ "verity": {
+  "data_block_size": 4096,
+  "data_blocks": 1578427,
+  "format": 1,
+  "hash": "sha256",
+  "hash_block_size": 4096,
+  "root_hash": "dff1a84385ef7a2221e87970bbbe22b98e4dcaec0408fadb6a7a83ad7031cf4a",
+  "salt": "887f5076d725cfe28cab0314f76044deafe5852b8437809a1c9a1fbd15bb4aec",
+  "salt_derivation": "sha256(\"sn92-t2-verity-salt-v1\")",
+  "superblock": false
+ },
+ "snp_policy": "0x30000",
+ "live_check": {
+  "date": "2026-11-24T19:29Z",
+  "equals_prediction": true,
+  "verdict": "T2 ok"
+ }
+}

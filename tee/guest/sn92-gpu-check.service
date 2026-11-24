@@ -1,0 +1,8 @@
+[Unit]
+Description=SN92 local GPU attestation and readiness
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/sn92/sn92-gpu-check
+RemainAfterExit=yes

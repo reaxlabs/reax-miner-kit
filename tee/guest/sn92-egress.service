@@ -1,0 +1,10 @@
+[Unit]
+Description=SN92 egress lockdown
+Before=network-pre.target
+Wants=network-pre.target
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/nft -f /etc/sn92/egress.nft
+RemainAfterExit=yes
+[Install]
+WantedBy=multi-user.target

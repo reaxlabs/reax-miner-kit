@@ -1,0 +1,8 @@
+# SN92 T2 DEBUG only. Disarm for this boot: systemctl stop sn92-debug-deadman.timer
+[Unit]
+Description=SN92 T2 DEBUG dead-man timer
+[Timer]
+OnBootSec=25min
+AccuracySec=10s
+[Install]
+WantedBy=timers.target

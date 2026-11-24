@@ -1,0 +1,8 @@
+# SN92 T2 DEBUG only: if nobody disarms it (systemctl stop sn92-debug-deadman.timer over SSH), restore the stock
+# initramfs and reboot, so a debug image that comes up without working SSH falls back to the reachable stock boot.
+[Unit]
+Description=SN92 T2 DEBUG dead-man: restore stock initramfs and reboot
+RequiresMountsFor=/boot
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'B=/boot/initrd.img-6.8.0-149-generic; test -f "$B.stock" && cp "$B.stock" "$B.sn92-new" && sync && mv -f "$B.sn92-new" "$B" && sync && systemctl reboot'
