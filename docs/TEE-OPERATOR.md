@@ -3,6 +3,9 @@
 Rule 10 of [INFERENCE-MINING-V2.md](INFERENCE-MINING-V2.md) has the dates and the bonus. This page explains how to set
 up a node our validators can attest. Everything you need is in [`tee/`](../tee) in this repository.
 
+**Current scope:** TEE verification currently covers EU sites only (the policy also checks that the node is in the EU:
+network round trip and an EU network operator). Verification for global pots follows; we announce it in #92.
+
 ## What we check
 
 A TEE node is a confidential VM with a confidential-computing GPU. Our verifier asks the VM for fresh evidence and checks:
@@ -20,9 +23,10 @@ TEE until the next good verdict.
 
 | CPU TEE | GPU | Status |
 | --- | --- | --- |
-| AMD SEV-SNP (EPYC Genoa / Turin) | RTX PRO 6000 Blackwell Server Edition, CC on | proven live end to end (T1 and T2) |
-| AMD SEV-SNP | H100 / H200 / B200, CC on | verifier supports it; first live node pending |
-| Intel TDX (Xeon 5th gen / Xeon 6) | H100 / H200 / B200, CC on | verifier supports it; TDX guest image not built yet |
+| AMD SEV-SNP (EPYC Turin) | RTX PRO 6000 Blackwell Server Edition, CC on | proven live end to end (T1 and T2) on Verda FIN-03 |
+| AMD SEV-SNP (EPYC Genoa / Milan) | as above | on request: not accepted yet (no firmware minimum configured, so the verifier rejects it) |
+| AMD SEV-SNP | H100 / H200 / B200, CC on | verifier code ready; policy and image after a first test node |
+| Intel TDX (Xeon 5th gen / Xeon 6) | H100 / H200 / B200, CC on | verifier code ready; policy and TDX guest image after a first test node |
 
 Whole-machine TEE platforms that attest their own image to their own validators (e.g. TargonOS) cannot be reused: the
 report must carry our measurement and our binding. The same hardware works with the VM described here.
@@ -55,8 +59,9 @@ Podman tips from our live runs: tmpfs mounts need `U` (not `uid=`), and `--read-
 
 ## T2: our measured image
 
-T2 boots a reproducible image with a dm-verity root (no SSH, no interactive root). Its launch digest is predictable,
-so the verifier can check exactly what runs. Build it with `tee/image/build-on-verda.sh` (see `tee/image/DESIGN.md`).
+T2 boots our published image with a dm-verity root (no SSH, no interactive root). Its launch digest is fixed, so the
+verifier can check exactly what runs. T2 means our published image: the build is not bit-reproducible, so an image you
+build yourself gets a different digest and fails T2 until that digest is approved by us (ask in #92). Build it with `tee/image/build-on-verda.sh` (see `tee/image/DESIGN.md`).
 The approved values for the current release are in [`tee/GOLDEN-T2-2026-11-24.json`](../tee/GOLDEN-T2-2026-11-24.json):
 
 | Field | Value |
@@ -66,8 +71,10 @@ The approved values for the current release are in [`tee/GOLDEN-T2-2026-11-24.js
 | dm-verity root hash | `dff1a84385ef7a2221e87970bbbe22b98e4dcaec0408fadb6a7a83ad7031cf4a` |
 | Verifier policy | `tee/policy/t2-verda-rtxpro6000-cc-2404-release-f7375d2bf393.json` |
 
-You can recompute the digest yourself with `sev-snp-measure==0.0.13` from the artifact hashes in the golden file. When
-T2 becomes the required level we announce it in #92 first; until then T1 and T2 both count as TEE.
+The golden file lists the artifact hashes the digest was computed from (`sev-snp-measure==0.0.13`), so you can check
+that the published image matches it. Our validators run the policy `eu-validator-v1` (T1 stock image
+and T2 release image both accepted, T1 is the minimum). When T2 becomes the required level we announce it in #92 first;
+until then T1 and T2 both count as TEE.
 
 ## Privacy
 

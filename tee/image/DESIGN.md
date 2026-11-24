@@ -1,25 +1,25 @@
 # Verda SNP guest image: design, not release-ready
 
-## Live T2 RELEASE result (24 Nov 2026, pod f5f58d28, slice t2release)
+## Live T2 release result (24 Nov 2026)
 
 Both variants built on the stock boot (`build debug`, `build release`, ~80 s + ~25 s). DEBUG boot: SSH back after
 91 s (the `ssh.service` drop-in fix works; no ordering cycle), dead-man disarmed, `/` = overlay on the dm-verity
 squashfs, SNP MEASUREMENT == prediction `cd47be5e…5b5d`, GPU CC ready, agent healthy, podman runs the preloaded image.
 `install release` from the DEBUG boot, reboot: agent healthz from our verifier host after 83 s, MEASUREMENT == prediction
 `f7375d2b…e436`, TCP 22 refused, verifier with `policy/t2-verda-rtxpro6000-cc-2404-release-f7375d2bf393.json`
-(T2 list = release digest, `required_assurance: T2`): ok=true, assurance T2. Details: `MANIFEST-2026-11-24-t2release.json`.
+(T2 list = release digest, `required_assurance: T2`): ok=true, assurance T2.
 Operational note: the agent admits one `/attest` per source IP per 10 s; an unverified probe call (to read
 `wg_pubkey`) must be followed by a pause of >10 s before the verifier call, or the verifier records `challenge`.
 
-## What actually worked (live, 24 Nov 2026, VM tee-t2-build-4)
+## What actually worked (live, 24 Nov 2026)
 
 `image/build-on-verda.sh` builds the image on a T1-provisioned Verda `1RTXPRO6000.30V.CC` VM
 (`provision_node.sh` path, then `sn92-enable`). Live result for the DEBUG variant: the SNP report MEASUREMENT after
 reboot equalled the prediction (`567343b8...`), and the repo verifier with a T2 policy (the T1 policy plus
 `assurance_level: T2` and that digest) returned ok=True with no failed checks (SNP, NRAS GB20X, binding, RTT/ASN).
 The agent answered `/healthz` from our verifier host, and the per-boot WireGuard key was new.
-Record: `image/MANIFEST-2026-11-24.json`. Before the change, the stock prediction == report == `f82b40...` on this
-instance, the same value as on probe 1's instance. So the measured cmdline (`root=UUID=59134bd0-...`) is the same
+Before the change, the stock prediction == report == `f82b40...` on this
+instance, the same value as on an earlier instance. So the measured cmdline (`root=UUID=59134bd0-...`) is the same
 across instances of this image (2 instances seen).
 
 How it works (all in the script, ~2 min on 30 vCPUs):

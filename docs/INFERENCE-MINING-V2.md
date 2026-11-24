@@ -42,8 +42,10 @@ These rules and the model list describe the planned validator release. The start
    Tuesday 1 December 2026**. Models whose check has passed are open from
    the start; the others join as soon as their check passes, without further notice.
 10. **TEE for all inference mining.** TEE (confidential computing with attestation) becomes the standard in every pot,
-    global and EU. From the **v2 pay start** (planned Thursday 26 November 2026, announced in #92 at least 24 hours
-    ahead), GPU-hours with a valid TEE attestation count 1.5x toward your pot share. From **Thursday 3 December 2026**,
+    global and EU. GPU-hours with a valid TEE attestation count 1.5x toward your pot share as soon as validators send
+    scored pot traffic to the attested node itself. Target: together with the **v2 pay start**, planned **Thursday 26
+    November 2026**; the exact start is confirmed in #92. TEE verification currently covers EU sites; global sites
+    follow (announced in #92). From **Thursday 3 December 2026**,
     TEE is required in every pot, provided at least two TEE operators serve each listed model on Monday 30 November; this
     is confirmed in #92 on 30 November. TEE-capable GPUs: RTX PRO 6000 Server Edition, H100, H200 or B200 with
     confidential computing on. Setup notes for TEE nodes: [TEE-OPERATOR.md](TEE-OPERATOR.md). The EU layer already
