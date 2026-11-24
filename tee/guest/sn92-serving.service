@@ -1,0 +1,13 @@
+[Unit]
+Description=SN92 inference serving
+Requires=wg-quick@wg0.service sn92-gpu-check.service
+After=wg-quick@wg0.service sn92-gpu-check.service
+BindsTo=wg-quick@wg0.service
+[Service]
+Type=simple
+ExecStart=/usr/local/libexec/sn92/sn92-serving
+ExecStop=-/usr/bin/podman stop -t 30 sn92-serving
+Restart=on-failure
+LimitCORE=0
+[Install]
+WantedBy=multi-user.target

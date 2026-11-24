@@ -1,0 +1,9 @@
+# SN92 T2 RELEASE: the serial console shows one fixed status line, never a login.
+[Unit]
+Description=SN92 T2 console status
+After=multi-user.target sn92-attest.service
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'echo "SN92-T2 RELEASE: measured image booted; no console login" > /dev/ttyS0'
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+"""Resolve configured peers once; fail without producing a partial ruleset."""
+import ipaddress
+import os
+import re
+import socket
+import sys
+from pathlib import Path
+
+
+def addresses(name):
+    if not name or not re.fullmatch(r"[A-Za-z0-9.:-]+", name):
+        raise ValueError("invalid or missing hostname")
+    found = {ipaddress.ip_address(row[4][0]) for row in socket.getaddrinfo(name, None, type=socket.SOCK_STREAM)}
+    if not found:
+        raise ValueError("hostname has no addresses")
+    return found
+
+
+def main():
+    gateway = addresses(os.environ["SN92_GATEWAY_HOST"])
+    services = set()
+    for key in ("SN92_NVIDIA_NRAS_HOSTS", "SN92_NVIDIA_RIM_HOSTS", "SN92_NVIDIA_OCSP_HOSTS", "SN92_AMD_KDS_HOSTS", "SN92_INTEL_PCS_HOSTS"):
+        names = os.environ[key].split()
+        if not names:
+            raise ValueError(f"{key} is empty")
+        for name in names:
+            services.update(addresses(name))
+    port = int(os.environ["SN92_GATEWAY_PORT"])
+    if not 1 <= port <= 65535:
+        raise ValueError("invalid gateway port")
+    template = Path(sys.argv[1]).read_text()
+    for label, items in (("GATEWAY", gateway), ("SERVICES", services)):
+        for version in (4, 6):
+            values = ", ".join(sorted(str(ip) for ip in items if ip.version == version))
+            if values:
+                template = template.replace(f"@{label}{version}@", values)
+            else:
+                template = template.replace(f"elements = {{ @{label}{version}@ }}", "")
+    template = template.replace("@WGPORT@", str(port))
+    sys.stdout.write(template)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (KeyError, ValueError, OSError, IndexError) as exc:
+        print(f"egress configuration failed: {type(exc).__name__}", file=sys.stderr)
+        sys.exit(1)

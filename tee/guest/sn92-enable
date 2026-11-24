@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Enable the SN92 boot chain after /etc/sn92/{config,wg0.template,workload.json,agent.env} are in place.
+# Boot order: sn92-wg-key (new key per boot) -> wg-quick@wg0 -> sn92-gpu-check (local attestation, GPU ready)
+#             -> sn92-attest (agent) and sn92-serving. Live finding 24 Nov: without this, a reboot leaves wg0 and the agent down.
+set -euo pipefail
+for f in /etc/sn92/config /etc/sn92/wg0.template /etc/sn92/workload.json /etc/sn92/agent.env /etc/systemd/system/sn92-attest.service; do
+  [[ -e $f ]] || { echo "missing $f (see RUNBOOK.md / agent/README.md)" >&2; exit 1; }
+done
+units=(wg-quick@wg0.service sn92-gpu-check.service sn92-attest.service)
+[[ ${SN92_ENABLE_SERVING:-1} == 1 ]] && units+=(sn92-serving.service)
+if [[ ${SN92_DRY_RUN:-0} == 1 ]]; then echo "+ systemctl enable --now ${units[*]}"; exit 0; fi
+systemctl daemon-reload
+systemctl enable --now "${units[@]}"
+systemctl --no-pager --lines=0 status "${units[@]}" | grep -E '^\S|Active:' || true
+echo "WireGuard public key for this boot (register it with SN92 after every reboot): $(cat /run/sn92/wg-public)"

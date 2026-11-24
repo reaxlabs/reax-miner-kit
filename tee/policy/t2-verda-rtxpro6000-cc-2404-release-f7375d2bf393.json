@@ -1,0 +1,81 @@
+{
+  "_comment": "T2 RELEASE policy (t2release slice, 24 Nov 2026): T1 policy + assurance T2 + the predicted launch digest of the SN92 T2 RELEASE measured image (dm-verity squashfs root, no sshd/getty) on Verda 1RTXPRO6000.30V.CC, kernel 6.8.0-149, built by image/build-on-verda.sh (MANIFEST-2026-11-24-t2release.json). Stock T1 digest removed: T2 only.",
+  "assurance_level": "T2",
+  "allowed_cpu_tee": [
+    "snp"
+  ],
+  "tdx_allowed_tcb_status": [
+    "UpToDate"
+  ],
+  "tdx_allowed_advisories": [],
+  "tdx_require_sept_ve_disable": true,
+  "tdx_measurements": [
+    {
+      "name": "sn92-eu-cvm-0.1.0/8xH100",
+      "mr_td": "<96 hex>",
+      "rt_mr0": "<96 hex>",
+      "rt_mr1": "<96 hex>",
+      "rt_mr2": "<96 hex>",
+      "rt_mr3": "<96 hex>"
+    }
+  ],
+  "snp_min_tcb": {
+    "Milan": {
+      "bootloader": 3,
+      "tee": 0,
+      "snp": 8,
+      "microcode": 115
+    },
+    "Genoa": {},
+    "Turin": {
+      "fmc": 1,
+      "bootloader": 3,
+      "tee": 2,
+      "snp": 6,
+      "microcode": 98
+    }
+  },
+  "snp_allowed_vmpl": [
+    0
+  ],
+  "snp_allow_vlek": true,
+  "snp_allowed_csp_ids": [],
+  "snp_forbid_migration_agent": true,
+  "snp_measurements": [],
+  "snp_allowed_host_data": [],
+  "gpu_allowed_hwmodel_prefixes": [
+    "GH100",
+    "GB100",
+    "GB202",
+    "GB20X"
+  ],
+  "gpu_min_driver_version": "580.65.06",
+  "gpu_min_count": 1,
+  "gpu_allow_local_mode": false,
+  "gpu_local_require_golden": true,
+  "nras_leeway_seconds": 60,
+  "nras_x5c_top_issuer_contains": "CN=NVIDIA Attestation Service CA",
+  "require_eu_location": true,
+  "eu_platform_registry": [],
+  "rtt_min_probes": 3,
+  "rtt_max_radius_km": 1500,
+  "rtt_slack_km": 0,
+  "notes": {
+    "snp_min_tcb_Turin": "observed on Verda FIN-03 24 Nov 2026; raise per AMD security bulletins",
+    "gpu_hwmodel_GB20X": "NRAS reports hwmodel GB20X for RTX PRO 6000 Blackwell Server Edition (live Verda probe 24 Nov 2026)",
+    "snp_measurements_t2": "release root_hash dff1a84385ef7a2221e87970bbbe22b98e4dcaec0408fadb6a7a83ad7031cf4a; rootfs snapshot of a T1-provisioned box, not bit-reproducible: digest valid for this build only"
+  },
+  "snp_measurements_t2": [
+    "f7375d2bf39370f66ea5c176b88a918872a91812f25e4905f3767925d56d4f53dca57bd3292604c996755a079fa8e436"
+  ],
+  "tdx_measurements_t2": [],
+  "required_assurance": "T2",
+  "recheck_ok_s": 3600,
+  "snp_measurement_mode": "enforce",
+  "tdx_measurement_mode": "enforce",
+  "eu_cloud_providers": [
+    "verda"
+  ],
+  "rtt_max_ms": 10,
+  "location_mode": "registry_rtt"
+}

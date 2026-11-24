@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# shellcheck source=/dev/null
+source /etc/sn92/config
+[[ ${SN92_CUDA_TEST_IMAGE:-} =~ ^[^[:space:]@]+@sha256:[0-9a-f]{64}$ ]] || { echo 'Digest-pinned CUDA test image required' >&2; exit 1; }
+nvidia-smi conf-compute -f | grep -Eq 'CC status:[[:space:]]*ON'
+# Local verifier must be installed and its policy reviewed independently. Failure blocks GPU readiness.
+command -v nvattest >/dev/null
+nvattest attest --device gpu --verifier local
+podman run --rm --pull=never --device nvidia.com/gpu=all --network none "$SN92_CUDA_TEST_IMAGE" nvidia-smi conf-compute -f | grep -Eq 'CC status:[[:space:]]*ON'
+nvidia-smi conf-compute -srs 1
