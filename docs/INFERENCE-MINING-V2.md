@@ -33,12 +33,20 @@ These rules and the model list describe the planned validator release. The start
 7. **Transition for today's pools.** From the start, s1-fast, s1-lite, s1-cpu and the global s1-pro pool are paid only what
    the new pots do not yet pay out (never more than today), for 7 days. Then they end. Switching a miner to a pot model is one
    command (`reaxctl switch --model <id>`).
-8. **EU operators** (under contract, data stays in the EU) are a separate layer: admitted by our answer test instead of
-   bit-identical answers, so they can run as many parallel requests as their hardware answers correctly, and paid per
-   verified GPU-hour. A GPU, host or IP cannot be in both layers.
+8. **EU operators** (under contract, data stays in the EU) are a separate layer. They must run in a TEE: confidential
+   computing with attestation that our validators check. They are admitted by our answer test instead of bit-identical
+   answers, so they can run as many parallel requests as their hardware answers correctly. They are paid per verified,
+   attested GPU-hour, always more than the same GPU class earns in the open pots; the exact rate is in the operator
+   agreement. A GPU, host or IP cannot be in both layers.
 9. **Start.** The validator release with the pots starts at a time announced at least 24 hours ahead, **at the latest on
    Tuesday 1 December 2026**. Models whose check has passed are open from
    the start; the others join as soon as their check passes, without further notice.
+10. **TEE for all inference mining.** TEE (confidential computing with attestation) becomes the standard in every pot,
+    global and EU. From **Thursday 3 December 2026**, GPU-hours with a valid TEE attestation count 1.5x toward your pot
+    share. From **Thursday 17 December 2026**, TEE is required in every pot, provided at least two TEE operators serve each
+    listed model on 10 December; this is confirmed in #92 on 10 December. TEE-capable GPUs: RTX PRO 6000 Server Edition,
+    H100, H200 or B200 with confidential computing on. Setup notes for TEE nodes come with the 3 December release. The EU
+    layer already requires a TEE (rule 8).
 
 Nothing already earned is taken away. Rewards are variable subnet emissions and can be zero.
 
