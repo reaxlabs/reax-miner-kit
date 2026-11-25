@@ -3,8 +3,10 @@
 Rule 10 of [INFERENCE-MINING-V2.md](INFERENCE-MINING-V2.md) has the dates and the bonus. This page explains how to set
 up a node our validators can attest. Everything you need is in [`tee/`](../tee) in this repository.
 
-**Current scope:** TEE verification currently covers EU sites only (the policy also checks that the node is in the EU:
-network round trip and an EU network operator). Verification for global pots follows; we announce it in #92.
+**Current scope:** global TEE nodes (open pots) have no EU location requirement: the verifier for the global pots runs
+without the EU location check. The EU layer (rule 8) keeps it; its policy also checks that the node is in the EU
+(network round trip and an EU network operator). The policy files in [`tee/policy/`](../tee/policy) are the EU-layer
+policies (`require_eu_location: true`). There is no fixed onboarding limit; nodes are registered in the order they arrive.
 
 ## What we check
 

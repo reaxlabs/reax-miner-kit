@@ -103,7 +103,7 @@ The path is:
 
 The answer test ships with the subnet (`reax-answertest`). `reaxctl answer-test` runs it from your `PATH` or from the miner image. While the subnet release does not contain it yet, the command exits 12 and says so, and `up --eu` continues with a warning instead of failing. `--eu` is remembered, so `switch` uses the answer test too.
 
-TEE for everyone else: TEE-attested GPU-hours count 1.5x in every pot as soon as validators send scored traffic to the attested node (target: the v2 pay start, planned 26 November 2026, confirmed in #92), and from 3 December 2026 a TEE is required in every pot if at least two TEE operators serve each listed model on 30 November (rule 10 in [INFERENCE-MINING-V2.md](INFERENCE-MINING-V2.md)). TEE setup notes: [TEE-OPERATOR.md](TEE-OPERATOR.md).
+TEE for everyone else: TEE-attested GPU-hours count 1.5x in every pot as soon as validators send scored traffic to the attested node (start confirmed in #92), and from 3 December 2026 a TEE is required in every pot if every listed model has at least two TEE operators on 30 November (all-or-nothing; global TEE nodes need no EU site) (rule 10 in [INFERENCE-MINING-V2.md](INFERENCE-MINING-V2.md)). TEE setup notes: [TEE-OPERATOR.md](TEE-OPERATOR.md).
 
 ## Several GPUs or machines
 

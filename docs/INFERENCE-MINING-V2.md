@@ -43,15 +43,30 @@ These rules and the model list describe the planned validator release. The start
    the start; the others join as soon as their check passes, without further notice.
 10. **TEE for all inference mining.** TEE (confidential computing with attestation) becomes the standard in every pot,
     global and EU. GPU-hours with a valid TEE attestation count 1.5x toward your pot share as soon as validators send
-    scored pot traffic to the attested node itself. Target: together with the **v2 pay start**, planned **Thursday 26
-    November 2026**; the exact start is confirmed in #92. TEE verification currently covers EU sites; global sites
-    follow (announced in #92). From **Thursday 3 December 2026**,
-    TEE is required in every pot, provided at least two TEE operators serve each listed model on Monday 30 November; this
-    is confirmed in #92 on 30 November. TEE-capable GPUs: RTX PRO 6000 Server Edition, H100, H200 or B200 with
-    confidential computing on. Setup notes for TEE nodes: [TEE-OPERATOR.md](TEE-OPERATOR.md). The EU layer already
-    requires a TEE (rule 8).
+    scored pot traffic to the attested node itself; we confirm that start in #92. Global TEE nodes have no EU location
+    requirement; only the EU layer (rule 8) requires EU sites. From **Thursday 3 December 2026**, TEE is required in
+    every pot if, on **Monday 30 November**, every listed model has at least two TEE operators in its open global pot.
+    A TEE operator counts for a pot when it has a valid verdict and at least one full GPU unit in that pot. The check is
+    all-or-nothing: if even one model falls short, TEE stays a bonus everywhere, and we name the missing models and the
+    next check date in #92 on 30 November. There is no fixed onboarding limit; TEE nodes are registered in the order
+    they arrive. TEE-capable GPUs: RTX PRO 6000 Server Edition, H100, H200 or B200 with confidential computing on. Setup
+    notes for TEE nodes: [TEE-OPERATOR.md](TEE-OPERATOR.md). The EU layer already requires a TEE (rule 8).
 
 Nothing already earned is taken away. Rewards are variable subnet emissions and can be zero.
+
+## Questions
+
+- **Do the pot budgets count only listed pots?** Yes. Each pot's budget is the 45 % share times its GPU-class weight,
+  divided by the sum of the weights of all listed pots. A pot that has not opened, or has no qualified operator, does
+  not raise the other pots (rules 1, 5, 7).
+- **Is the 50 % cap applied before or after normalization?** After. What the cap cuts is not passed on to other
+  operators (rules 3, 5).
+- **Can one GPU serve several pots?** It is allowed, but there is no gain. Each pot measures capacity in its own model, so
+  a GPU split between two models shows only its share in each, and the cap needs one full unit per pot (rule 3).
+- **Does a global TEE node have to be in the EU?** No. Only the EU layer requires EU sites (rules 8, 10).
+- **How does the 30 November check work?** All-or-nothing over the open global pots: every listed model needs at least
+  two TEE operators, each with a valid verdict and one full GPU unit in that pot. Otherwise TEE stays a bonus (rule 10).
+- **Is there a limit on TEE onboarding?** No fixed limit. Nodes are registered in the order they arrive (rule 10).
 
 ## Model list v1 (pots)
 | Model | GPU class | At start? |
