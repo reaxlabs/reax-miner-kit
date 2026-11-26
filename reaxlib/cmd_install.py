@@ -216,6 +216,34 @@ def packaged_cache(home, pool):
     return home / 'weights' / pool['id'] / 'packaged'
 
 
+def packaged_items(pool):
+    weights = pool['weights']
+    return [weights] + list(weights.get('dependencies') or [])
+
+
+def runtime_locks(home, pool):
+    """(host file, container path) of the lock file the packaged runtime opens in each weights revision.
+
+    The image's runtime.py takes an flock on <cache>/<cache_id>/<revision>/.runtime.lock before it
+    verifies the files, so it needs that one file writable; everything else under /weights stays read-only."""
+    root = packaged_cache(home, pool)
+    return [(root / item['cache_id'] / item['revision'] / '.runtime.lock',
+             '/weights/' + item['cache_id'] + '/' + item['revision'] + '/.runtime.lock') for item in packaged_items(pool)]
+
+
+def ensure_lock_file(path):
+    """Create an empty regular lock file (never through a symbolic link); return False if the path is unusable."""
+    import stat
+    try:
+        fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | getattr(os, 'O_NOFOLLOW', 0), 0o644)
+    except OSError:
+        return False
+    try:
+        return stat.S_ISREG(os.fstat(fd).st_mode)
+    finally:
+        os.close(fd)
+
+
 def verified_configs(runtime):
     import hashlib
     name = runtime.get('configs')
@@ -242,7 +270,7 @@ def runtime_image_key(pool, jetson=False):
     return base + '_jetson' if jetson and pool.get('jetson') else base
 
 
-def render(home, d, config, source=None, path=None):
+def render(home, d, config, source=None, path=None, env_path=None):
     from .descriptor import validate
     from .models import PACKAGED_RUNTIME
     validate(d)
@@ -311,8 +339,9 @@ def render(home, d, config, source=None, path=None):
             if gguf:
                 services += ['      GGUF_MODEL_DIR: /model', '      GGUF_N_GPU_LAYERS: ' + q('-1' if nvidia else '0')]
             services += runtime_env
+            locks = ['      - ' + q('{}:{}'.format(host, container)) for host, container in runtime_locks(home, pool)] if packaged else []
             services += ['    volumes:', '      - ' + q(token + ':/run/runtime-token:ro'),
-                         '      - ' + q(weight_mount)] + ccfix
+                         '      - ' + q(weight_mount)] + locks + ccfix
             if nvidia and not on_jetson:
                 # --gpu N pins the sidecar to one GPU of a multi-GPU machine (device_ids and count are mutually exclusive in compose)
                 services += ['    deploy:', '      resources:', '        reservations:',
@@ -343,7 +372,7 @@ def render(home, d, config, source=None, path=None):
         values['REAX_ALLOW_DEV_MODELS'] = '1'  # refused on mainnet by the miner; install already refuses dev pools there
     if any('\n' in str(v) or '\r' in str(v) for v in values.values()):
         raise ValueError('Environment values cannot contain newlines')
-    envfile = home / 'miner.env'
+    envfile = env_path or home / 'miner.env'
     from .state import write_text
     write_text(envfile, '\n'.join(k + '=' + str(v).replace('$', '$$') for k, v in values.items()) + '\n')
 
@@ -462,18 +491,26 @@ def install(args):
         # Stage the new compose file next to the live one; it replaces compose.yml only after
         # images and weights are in place, so a failed install never leaves compose.yml pointing
         # at a model whose weights are missing while config.json still names the old one.
-        staged = home / 'compose.next.yml'
-        render(home, d, config, source, path=staged)
-        failure = stage(runner, home, d, pool, packaged, staged)
+        staged, staged_env = home / 'compose.next.yml', home / 'miner.env.next'
+        def discard():
+            for leftover in (staged, staged_env):
+                try:
+                    leftover.unlink()
+                except OSError:
+                    pass
+        try:
+            render(home, d, config, source, path=staged, env_path=staged_env)
+            failure = stage(runner, home, d, pool, packaged, staged)
+        except BaseException:
+            discard()
+            raise
         if failure:
-            try:
-                staged.unlink()
-            except OSError:
-                pass
+            discard()
             return failure
-        from .state import write_text
-        write_text(home / 'compose.yml', staged.read_text(), 0o644)
-        staged.unlink()
+        # miner.env first: the live compose.yml always reads miner.env, so both name the same model
+        # from here on; config.json follows immediately.
+        os.replace(str(staged_env), str(home / 'miner.env'))
+        os.replace(str(staged), str(home / 'compose.yml'))
         mark(home, 'weights', pool['weights'])
     write_config(home, config)
     mark(home, 'install', {'release_id': d['release_id'], 'mode': mode})
@@ -490,8 +527,7 @@ def stage(runner, home, d, pool, packaged, compose_file):
     weights = pool['weights']
     if packaged:
         root = packaged_cache(home, pool)
-        downloads = [(item, root / item['cache_id'] / item['revision'])
-                     for item in [weights] + weights.get('dependencies', [])]
+        downloads = [(item, root / item['cache_id'] / item['revision']) for item in packaged_items(pool)]
     else:
         downloads = [(weights, weights_dir(home, pool))]
     script = 'from huggingface_hub import snapshot_download; import sys; snapshot_download(repo_id=sys.argv[1],revision=sys.argv[2],local_dir=sys.argv[3],allow_patterns=sys.argv[4:] or None)'
@@ -515,6 +551,11 @@ def stage(runner, home, d, pool, packaged, compose_file):
         if missing:
             return Result('install', 'error', 'Pinned weights download is incomplete; retry install.',
                           data={'repo': item['repo'], 'missing': missing[:10]}, exit_code=13)
+    if packaged:
+        for lock, _ in runtime_locks(home, pool):
+            if not ensure_lock_file(lock):
+                return Result('install', 'error', 'Cannot create the runtime lock file in the weights cache; check its permissions.',
+                              data={'path': str(lock)}, exit_code=13)
     return None
 
 

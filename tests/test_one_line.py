@@ -638,6 +638,12 @@ class CatalogInstallTest(unittest.TestCase):
         cache = self.home / 'weights' / 'kev-4b' / 'packaged'
         self.assertIn(str(cache) + ':/weights:ro"', runtime)
         self.assertNotIn(':/model', runtime)
+        # Only the per-revision lock files the runtime flocks are writable, and they exist before start.
+        for cache_id, revision in (('kev-4b', 'a' * 40), ('kev-base', 'd' * 40)):
+            lock = cache / cache_id / revision / '.runtime.lock'
+            self.assertIn('"{}:/weights/{}/{}/.runtime.lock"'.format(lock, cache_id, revision), runtime)
+            self.assertTrue(lock.is_file() and not lock.is_symlink())
+        self.assertEqual(sum('.runtime.lock' in line for line in runtime.splitlines()), 2)
         downloads = [cmd[4:] for cmd in self.calls if len(cmd) > 3 and 'snapshot_download' in cmd[3]]
         self.assertEqual(downloads, [
             ['jaredpalmer/kev-4b', 'a' * 40, str(cache / 'kev-4b' / ('a' * 40)),
@@ -678,6 +684,7 @@ class CatalogInstallTest(unittest.TestCase):
         self.home.mkdir()
         (self.home / 'compose.yml').write_text('OLD COMPOSE\n')
         io.write_config(self.home, {'pool': 's1-fast', 'manifest_id': 'old'})
+        (self.home / 'miner.env').write_text('REAX_MODEL=s1-fast\n')
 
         def partial(cmd, **kwargs):
             self.calls.append(cmd)
@@ -696,7 +703,31 @@ class CatalogInstallTest(unittest.TestCase):
         self.assertEqual(result.data['missing'], ['tokenizer/tokenizer.json'])
         self.assertEqual((self.home / 'compose.yml').read_text(), 'OLD COMPOSE\n')
         self.assertFalse((self.home / 'compose.next.yml').exists())
+        self.assertEqual((self.home / 'miner.env').read_text(), 'REAX_MODEL=s1-fast\n')
+        self.assertFalse((self.home / 'miner.env.next').exists())
         self.assertEqual(io.read_config(self.home)['pool'], 's1-fast')
+
+    def test_symlinked_runtime_lock_is_refused(self):
+        self.packaged()
+        cache = self.home / 'weights' / 'kev-4b' / 'packaged' / 'kev-4b' / ('a' * 40)
+        cache.mkdir(parents=True)
+        outside = self.home / 'outside'
+        outside.write_text('x')
+        (cache / '.runtime.lock').symlink_to(outside)
+        result = self.install()
+        self.assertEqual(result.code(), 13)
+        self.assertIn('lock file', result.summary)
+        self.assertFalse((self.home / 'compose.yml').exists())
+        self.assertFalse((self.home / 'miner.env').exists())
+
+    def test_successful_install_promotes_compose_and_env_together(self):
+        self.packaged()
+        self.assertTrue(self.install().ok)
+        self.assertFalse((self.home / 'compose.next.yml').exists())
+        self.assertFalse((self.home / 'miner.env.next').exists())
+        env = dict(line.split('=', 1) for line in (self.home / 'miner.env').read_text().splitlines())
+        self.assertEqual(env['REAX_MODEL'], 'kev-4b')
+        self.assertIn('reax-model-kev-4b@sha256:', (self.home / 'compose.yml').read_text())
 
     def test_symlinked_or_missing_download_files_are_refused(self):
         root = self.home / 'dl'
