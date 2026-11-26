@@ -212,6 +212,10 @@ def weights_dir(home, pool):
     return home / 'weights' / pool['id']
 
 
+def packaged_cache(home, pool):
+    return home / 'weights' / pool['id'] / 'packaged'
+
+
 def verified_configs(runtime):
     import hashlib
     name = runtime.get('configs')
@@ -240,8 +244,10 @@ def runtime_image_key(pool, jetson=False):
 
 def render(home, d, config, source=None):
     from .descriptor import validate
+    from .models import PACKAGED_RUNTIME
     validate(d)
     pool = pool_of(d, config['pool'])
+    packaged = (pool.get('runtime') or {}).get('contract') == PACKAGED_RUNTIME
     q = lambda value: json.dumps(str(value).replace("$", "$$"))  # JSON quoted scalars are valid YAML scalars.
     on_jetson = bool(config.get('jetson')) and bool(pool.get('jetson'))
     key = runtime_image_key(pool, on_jetson)
@@ -276,7 +282,11 @@ def render(home, d, config, source=None):
     for name, imagekey in [('runtime', key), ('miner', 'miner')]:
         ref = pool['image_ref'] if name == 'runtime' and pool.get('catalog') else image_ref(d, imagekey)
         services += ['  ' + name + ':', '    image: ' + q(ref), '    user: ' + q(uid),
-                     '    init: true', '    network_mode: host', '    restart: unless-stopped', '    cap_drop: [ALL]', '    security_opt: ["no-new-privileges:true"]', '    logging:', '      driver: json-file', '      options:', '        max-size: "10m"', '        max-file: "3"']
+                     '    init: true', '    restart: unless-stopped', '    cap_drop: [ALL]', '    security_opt: ["no-new-privileges:true"]', '    logging:', '      driver: json-file', '      options:', '        max-size: "10m"', '        max-file: "3"']
+        if packaged and name == 'runtime':
+            services += ['    ports:', '      - ' + q('127.0.0.1:{}:8080'.format(pool['sidecar_port']))]
+        else:
+            services += ['    network_mode: host']
         if private and source and not (pool.get('catalog') and name == 'runtime'):
             runtime_dir = 'runtimes/s1-gguf' if gguf else 'runtimes/' + pool['id']
             services += ['    build:', '      context: ' + q(str(source)), '      dockerfile: ' + q('Dockerfile' if name == 'miner' else runtime_dir + ('/Dockerfile.jetson' if on_jetson else '/Dockerfile'))]
@@ -291,14 +301,18 @@ def render(home, d, config, source=None):
                 ccfix += ['      - ' + q(str(configs) + ':' + runtime['env']['FLA_CONFIG_DIR'] + ':ro')]
             if on_jetson:
                 services += ['    runtime: nvidia']  # Jetson exposes its integrated GPU through the nvidia runtime, not a device reservation
-            services += ['    environment:', '      S1M_INTERNAL_TOKEN_FILE: /run/runtime-token',
-                         '      ' + host_var + ': 127.0.0.1',
-                         '      ' + port_var + ': ' + q(str(pool['sidecar_port']))]
+            services += ['    environment:', '      S1M_INTERNAL_TOKEN_FILE: /run/runtime-token']
+            if packaged:
+                services += ['      RUNTIME_PORT: "8080"', '      HF_HUB_OFFLINE: "1"']
+                weight_mount = str(packaged_cache(home, pool)) + ':/weights'
+            else:
+                services += ['      ' + host_var + ': 127.0.0.1', '      ' + port_var + ': ' + q(str(pool['sidecar_port']))]
+                weight_mount = str(weights_dir(home, pool)) + ':/model:ro'
             if gguf:
                 services += ['      GGUF_MODEL_DIR: /model', '      GGUF_N_GPU_LAYERS: ' + q('-1' if nvidia else '0')]
             services += runtime_env
             services += ['    volumes:', '      - ' + q(token + ':/run/runtime-token:ro'),
-                         '      - ' + q(str(weights_dir(home, pool)) + ':/model:ro')] + ccfix
+                         '      - ' + q(weight_mount)] + ccfix
             if nvidia and not on_jetson:
                 # --gpu N pins the sidecar to one GPU of a multi-GPU machine (device_ids and count are mutually exclusive in compose)
                 services += ['    deploy:', '      resources:', '        reservations:',
@@ -335,6 +349,7 @@ def render(home, d, config, source=None):
 
 
 def install(args):
+    from .models import PACKAGED_RUNTIME
     home = home_of(args)
     d = descriptor(args)
     config = read_config(home)
@@ -352,6 +367,7 @@ def install(args):
     pool = pool_of(d, name)
     if not pool:
         return Result('install', 'error', 'Unknown pool.', exit_code=2)
+    packaged = (pool.get('runtime') or {}).get('contract') == PACKAGED_RUNTIME
     if pool.get('dev_only') and mode == 'mainnet':
         return Result('install', 'blocked', 'Pool {} is a development-network pool and cannot be installed on mainnet; use --mode localnet or testnet, or choose a launch pool.'.format(name), exit_code=12)
     if 'manifest_id' in config and config['manifest_id'] != pool['manifest_id'] and not getattr(args, 'accept_manifest_change', False):
@@ -444,21 +460,32 @@ def install(args):
         if rc:
             return Result('install', 'error', 'Image download or build failed.', exit_code=13)
         mark(home, 'images', {'images': d['images']})
-        target = weights_dir(home, pool)
-        target.mkdir(parents=True, exist_ok=True)
+        weights = pool['weights']
+        if packaged:
+            root = packaged_cache(home, pool)
+            downloads = [(item, root / item['cache_id'] / item['revision'])
+                         for item in [weights] + weights.get('dependencies', [])]
+        else:
+            downloads = [(weights, weights_dir(home, pool))]
         script = 'from huggingface_hub import snapshot_download; import sys; snapshot_download(repo_id=sys.argv[1],revision=sys.argv[2],local_dir=sys.argv[3],allow_patterns=sys.argv[4:] or None)'
-        # weights.files limits the download to those exact files (GGUF repos hold one file; never pull the rest)
-        # own HF cache dir: an inherited HF_HOME can be unwritable for this user (found on a real GPU host: xet cache permission denied)
+        # Keep the Hugging Face cache under this kit home, which may run as a non-root user.
         hf_env = dict(os.environ, HF_HOME=str(home / 'hf-cache'))
-        rc, _, hf_err = runner([str(home / 'venv/bin/python'), '-I', '-c', script, pool['weights']['repo'], pool['weights']['revision'], str(target)] + list(pool['weights'].get('files') or []), timeout=7200, env=hf_env)
-        if rc:
-            if pool['weights'].get('gated'):
+        if packaged:
+            hf_env['HF_HUB_DISABLE_IMPLICIT_TOKEN'] = '1'
+        for item, target in downloads:
+            target.mkdir(parents=True, exist_ok=True)
+            command = [str(home / 'venv/bin/python'), '-I', '-c', script,
+                       item['repo'], item['revision'], str(target)] + item.get('files', [])
+            rc, _, hf_err = runner(command, timeout=7200, env=hf_env)
+            if not rc:
+                continue
+            if weights.get('gated'):
                 return human('install', 'Accept the weights gate with your own Hugging Face account.',
                              'The gated model requires account access; reaxctl never asks for your token.',
                              ['Accept access on the model page.', str(home / 'venv/bin/hf') + ' auth login', 'Retry reaxctl install.'],
-                             'https://huggingface.co/' + pool['weights']['repo'])
+                             'https://huggingface.co/' + weights['repo'])
             return Result('install', 'error', 'Pinned weights download failed; retry install.', data={'detail': detail(hf_err)}, exit_code=13)
-        mark(home, 'weights', pool['weights'])
+        mark(home, 'weights', weights)
     write_config(home, config)
     mark(home, 'install', {'release_id': d['release_id'], 'mode': mode})
     return Result('install', summary='Installation prepared.', data={'home': str(home), 'mode': mode, 'token_path': str(secret)},

@@ -616,6 +616,42 @@ class CatalogInstallTest(unittest.TestCase):
         self.assertNotIn('count: 1', compose)
         self.assertEqual(io.read_config(self.home)['gpu_index'], 1)
 
+    def test_packaged_runtime_prefetches_primary_and_base_and_exposes_only_loopback(self):
+        model = self.release['models'][0]
+        model['runtime'].pop('env')
+        model['runtime']['contract'] = models.PACKAGED_RUNTIME
+        model['weights'].update(cache_id='kev-4b', files=['adapter_config.json', 'tokenizer/tokenizer.json'],
+                                dependencies=[{'cache_id': 'kev-base', 'repo': 'Qwen/Qwen3.5-4B-Base',
+                                               'revision': 'd' * 40, 'files': ['config.json', 'model.safetensors']}])
+        result = self.install()
+        self.assertTrue(result.ok, result.summary)
+        runtime, miner = (self.home / 'compose.yml').read_text().split('  miner:\n')
+        self.assertIn('"127.0.0.1:8105:8080"', runtime)
+        self.assertNotIn('network_mode: host', runtime)
+        self.assertIn('network_mode: host', miner)
+        self.assertIn('S1M_INTERNAL_TOKEN_FILE: /run/runtime-token', runtime)
+        self.assertIn('HF_HUB_OFFLINE: "1"', runtime)
+        cache = self.home / 'weights' / 'kev-4b' / 'packaged'
+        self.assertIn(str(cache) + ':/weights"', runtime)
+        self.assertNotIn(':/model', runtime)
+        downloads = [cmd[4:] for cmd in self.calls if len(cmd) > 3 and 'snapshot_download' in cmd[3]]
+        self.assertEqual(downloads, [
+            ['jaredpalmer/kev-4b', 'a' * 40, str(cache / 'kev-4b' / ('a' * 40)),
+             'adapter_config.json', 'tokenizer/tokenizer.json'],
+            ['Qwen/Qwen3.5-4B-Base', 'd' * 40, str(cache / 'kev-base' / ('d' * 40)),
+             'config.json', 'model.safetensors'],
+        ])
+
+    def test_packaged_runtime_rejects_escape_paths_and_binding_overrides(self):
+        model = self.release['models'][0]
+        model['runtime'].update(contract=models.PACKAGED_RUNTIME, env={'RUNTIME_ALLOW_NO_AUTH': '1'})
+        model['weights'].update(cache_id='kev-4b', files=['tokenizer/../weights.bin'])
+        with self.assertRaisesRegex(ValueError, 'packaged weights file list'):
+            io.render(self.home, self.release, {'pool': 'kev-4b'})
+        model['weights']['files'] = ['adapter_config.json']
+        with self.assertRaisesRegex(ValueError, 'built-in settings'):
+            io.render(self.home, self.release, {'pool': 'kev-4b'})
+
     def test_coming_model_is_refused_before_any_command_runs(self):
         coming = live_model(status='coming')
         coming['weights']['revision'] = 'TBD-kev'
