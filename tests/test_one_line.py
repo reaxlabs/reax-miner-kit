@@ -634,7 +634,7 @@ class CatalogInstallTest(unittest.TestCase):
         self.assertIn('S1M_INTERNAL_TOKEN_FILE: /run/runtime-token', runtime)
         self.assertIn('HF_HUB_OFFLINE: "1"', runtime)
         cache = self.home / 'weights' / 'kev-4b' / 'packaged'
-        self.assertIn(str(cache) + ':/weights"', runtime)
+        self.assertIn(str(cache) + ':/weights:ro"', runtime)
         self.assertNotIn(':/model', runtime)
         downloads = [cmd[4:] for cmd in self.calls if len(cmd) > 3 and 'snapshot_download' in cmd[3]]
         self.assertEqual(downloads, [

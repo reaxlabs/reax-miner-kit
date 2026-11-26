@@ -304,7 +304,7 @@ def render(home, d, config, source=None):
             services += ['    environment:', '      S1M_INTERNAL_TOKEN_FILE: /run/runtime-token']
             if packaged:
                 services += ['      RUNTIME_PORT: "8080"', '      HF_HUB_OFFLINE: "1"']
-                weight_mount = str(packaged_cache(home, pool)) + ':/weights'
+                weight_mount = str(packaged_cache(home, pool)) + ':/weights:ro'
             else:
                 services += ['      ' + host_var + ': 127.0.0.1', '      ' + port_var + ': ' + q(str(pool['sidecar_port']))]
                 weight_mount = str(weights_dir(home, pool)) + ':/model:ro'
