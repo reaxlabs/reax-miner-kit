@@ -24,7 +24,7 @@ class DescriptorModelsTest(unittest.TestCase):
 
     def test_example_models_are_all_coming_with_placeholders(self):
         example = example_release()
-        self.assertEqual(len(example['models']), 14)
+        self.assertEqual(len(example['models']), 13)  # reax-1-3 is not part of the v2 pots for now (#86886)
         for model in example['models']:
             self.assertEqual(model['status'], 'coming')
             self.assertTrue(models.is_placeholder(model['runtime']['digest']), model['id'])
@@ -224,9 +224,9 @@ class ModelsCommandTest(unittest.TestCase):
         self.assertEqual(rows['s1-fast']['status'], 'live')
         self.assertTrue(rows['s1-fast']['fits'])
         self.assertFalse(rows['s1-pro']['fits'])
-        self.assertEqual(rows['reax-1-3']['status'], 'coming')
-        self.assertFalse(rows['reax-1-3']['installable'])
-        self.assertIn('96+ GB', rows['reax-1-3']['needs'])
+        self.assertEqual(rows['autotrust-decider-pro-35b']['status'], 'coming')
+        self.assertFalse(rows['autotrust-decider-pro-35b']['installable'])
+        self.assertIn('96+ GB', rows['autotrust-decider-pro-35b']['needs'])
         self.assertIsNone(rows['torchcast-decision-31b']['unit_throughput']['value'])
         self.assertEqual(rows['s1-fast']['pot'], 's1-fast')
         self.assertEqual(rows['s1-fast']['runtime']['port'], 8101)
@@ -237,7 +237,7 @@ class ModelsCommandTest(unittest.TestCase):
         rc, text = self.call('models', '--status', 'coming', release=example_release())
         self.assertEqual(rc, 0)
         self.assertIn('MODEL', text)
-        self.assertIn('reax-1-3', text)
+        self.assertIn('autotrust-decider-pro-35b', text)
         self.assertNotIn('s1-fast', text)
 
     def test_retired_hidden_unless_asked_or_installed(self):

@@ -148,7 +148,7 @@ class UpDryRunTest(Harness):
 
     def test_dry_run_of_a_coming_model_exits_12(self):
         self.release = example_release()
-        result = self.run_up(model='reax-1-3', dry_run=True)
+        result = self.run_up(model='autotrust-decider-pro-35b', dry_run=True)
         self.assertEqual(result.code(), 12)
         self.assertIn('not live yet', result.warnings[0])
         self.assertEqual(result.data['model_status'], 'coming')
@@ -366,7 +366,7 @@ class UpRunTest(Harness):
 
     def test_coming_model_is_refused_with_exit_12(self):
         self.release = example_release()
-        result = self.run_up(model='reax-1-3')
+        result = self.run_up(model='autotrust-decider-pro-35b')
         self.assertEqual(result.code(), 12)
         self.assertEqual(self.installs, [])
 
@@ -524,8 +524,8 @@ class SwitchTest(Harness):
         self.assertEqual((self.installs, self.compose_calls), ([], []))
 
     def test_coming_and_unknown_models_are_refused(self):
-        self.release = example_release()  # reax-1-3 is "coming"; the installed other-4b is not in it any more
-        self.assertEqual(self.run_switch(model='reax-1-3').code(), 12)
+        self.release = example_release()  # autotrust-decider-pro-35b is "coming"; the installed other-4b is not in it any more
+        self.assertEqual(self.run_switch(model='autotrust-decider-pro-35b').code(), 12)
         self.assertEqual(self.run_switch(model='nonsense').code(), 2)
 
     def test_retired_target_is_refused(self):
