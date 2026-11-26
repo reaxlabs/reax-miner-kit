@@ -112,7 +112,7 @@ verified TEE node, so its 2 units count as 3. Shares: F 3/7 = 42.9 %, G and H 2/
 |---|---|---|
 | Who | anyone, permissionless | operators under contract (operator agreement) |
 | Where | anywhere; a global TEE node needs **no** EU site | EU sites only; data stays in the EU |
-| TEE | bonus now; required from 3 Dec if the 30 Nov check passes | required |
+| TEE | optional now (1.5× once validators send scored pot traffic to the attested node); required from 3 Dec if the 30 Nov check passes | required |
 | Answer check | answers must match the pinned reference exactly | our answer test (answer quality instead of bit-identical answers), so as many parallel requests as the hardware answers correctly |
 | Pay | share of the model's pot (see How you are paid) | per verified, attested GPU-hour; always more than the same GPU class earns in the global pots; rate in the agreement |
 | Bonuses | pioneer bonus, TEE 1.5x | none (the rate already includes them) |
