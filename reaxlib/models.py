@@ -265,7 +265,7 @@ def _from_model(release, model):
             'manifest_id': model['manifest_id'], 'commitment': model['commitment'], 'unit_throughput': model.get('unit_throughput'),
             'runtime': {'image': runtime['image'], 'digest': runtime['digest'], 'port': runtime['port'], 'env': dict(runtime.get('env') or {}),
                         'host_var': runtime.get('host_var', 'RUNTIME_HOST'), 'port_var': runtime.get('port_var', 'RUNTIME_PORT')},
-            'miner_env': dict(model.get('miner_env') or {}), 'dev_only': False}
+            'miner_env': dict(model.get('miner_env') or {}), 'notes': model.get('notes'), 'dev_only': False}
 
 
 def catalog(release):

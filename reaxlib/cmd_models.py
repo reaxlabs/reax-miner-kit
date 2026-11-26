@@ -19,13 +19,16 @@ def describe(release, entry, host, gpus, installed):
     verdict = models.fit(release, entry, host, gpus)
     ok, why = models.availability(release, entry)
     runtime, throughput = entry['runtime'], entry.get('unit_throughput')
-    return {'id': entry['id'], 'name': entry['name'], 'pot': entry['pot'], 'status': entry['status'], 'kind': entry['kind'],
+    row = {'id': entry['id'], 'name': entry['name'], 'pot': entry['pot'], 'status': entry['status'], 'kind': entry['kind'],
             'installable': ok, 'not_installable_because': why or None,
             'accelerator': entry['accelerator'], 'needs': models.need_text(entry), 'gpu': {k: entry['gpu'][k] for k in ('class', 'min_vram_gb', 'max_vram_gb', 'count', 'vendor') if k in entry['gpu']},
             'disk_gb': entry['disk_gb'], 'weights': {k: entry['weights'][k] for k in ('repo', 'revision', 'size_gb', 'gated', 'licence') if k in entry['weights']},
             'runtime': {'image': runtime['image'], 'digest': runtime['digest'], 'port': runtime['port']},
             'unit_throughput': throughput, 'manifest_id': entry['manifest_id'], 'commitment': entry['commitment'],
             'fits': verdict['fits'], 'fit_reasons': verdict['reasons'], 'installed': installed == entry['id']}
+    if entry.get('notes'):
+        row['notes'] = entry['notes']
+    return row
 
 
 def table(rows):
@@ -53,6 +56,9 @@ def handle(args):
                         'cpu_cores': host.get('cpu_cores'), 'ram_gb': round(host['ram_gb'], 1) if host.get('ram_gb') is not None else None,
                         'disk_free_gb': round(host['disk_free_gb'], 1) if host.get('disk_free_gb') is not None else None},
             'text_lines': table(rows)}
+    for row in rows:
+        if row['status'] == 'live' and row.get('notes'):
+            data['text_lines'].append('{}: {}'.format(row['id'], row['notes']))
     # a suggestion only: the most demanding live model this machine can serve
     best = max(live_fit, key=lambda r: (r['gpu'].get('min_vram_gb', 0), r['id'])) if live_fit else None
     nxt = [{'command': 'reaxctl up --model ' + best['id'], 'why': 'Set up this machine for the most demanding live model that fits it.'}] if best else []
