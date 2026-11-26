@@ -209,7 +209,6 @@ A GPU, host, IP or hotkey cannot be in both layers. EU interest: ask in #92 and 
 ## Model list v1 (pots)
 | Model | GPU class | At start? |
 |---|---|---|
-| REAX 1.3 (decisionmodels/REAX-1.3) | 96 GB | planned at start |
 | d3 (vllm-sr/d3) | 96 GB | planned at start |
 | Karpo Decision 31B | 96 GB | planned at start |
 | Clef 27B (Cloudflare/clef) | 96 GB | planned at start |
@@ -224,7 +223,7 @@ A GPU, host, IP or hotkey cannot be in both layers. EU interest: ask in #92 and 
 | AutoTrust Decider Pro 35B | 96 GB | joins when its check passes |
 | mammoth-1 | 96 GB | EU operators only |
 
-REAX 1.4 replaces REAX 1.3 when it is released. "Planned at start" is a plan, not a promise: a model opens only after its
+REAX 1.3 is not part of the v2 pots for now. "Planned at start" is a plan, not a promise: a model opens only after its
 reference check passes.
 
 ## How to start
