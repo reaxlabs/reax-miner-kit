@@ -12,7 +12,7 @@ from unittest.mock import patch
 from reaxlib import cmd_answertest, cmd_doctor, cmd_install as io, cmd_models, cmd_runtime, cmd_selfcheck, cmd_service, cmd_up, models
 from reaxlib.cli import main
 from reaxlib.result import Result
-from kit_fixtures import GPU_4090, HOST, base_release, example_release, live_model, release_with
+from kit_fixtures import GPU_4090, HOST, base_release, example_release, fake_download, live_model, release_with
 
 DOCTOR_OK = Result('doctor', data={'blockers': [], 'nvidia_container_toolkit': True, 'docker': {'nvidia_runtime': True}})
 
@@ -572,6 +572,7 @@ class CatalogInstallTest(unittest.TestCase):
         self.home = pathlib.Path(self.tmp.name) / 'state'
         self.release = release_with(live_model())
         self.calls = []
+        self.docker_version = '28.3.3\n'
         for target in (patch.object(io.sys, 'version_info', (3, 10, 12)),
                        patch.dict(_os.environ, REAX_WALLET_DIR='', REAX_SOURCE_DIR=''),
                        patch.object(io, 'descriptor', side_effect=lambda home: self.release),
@@ -584,7 +585,8 @@ class CatalogInstallTest(unittest.TestCase):
     def runner(self, cmd, **kwargs):
         self.calls.append(cmd)
         if cmd == ['docker', 'version', '--format', '{{.Server.Version}}']:
-            return 0, '28.0.1\n', ''
+            return 0, self.docker_version, ''
+        fake_download(cmd)
         return 0, '', ''
 
     def install(self, **kw):
@@ -653,6 +655,78 @@ class CatalogInstallTest(unittest.TestCase):
         model['weights']['files'] = ['adapter_config.json']
         with self.assertRaisesRegex(ValueError, 'built-in settings'):
             io.render(self.home, self.release, {'pool': 'kev-4b'})
+
+    def packaged(self):
+        model = self.release['models'][0]
+        model['runtime'].pop('env')
+        model['runtime']['contract'] = models.PACKAGED_RUNTIME
+        model['weights'].update(cache_id='kev-4b', files=['adapter_config.json', 'tokenizer/tokenizer.json'])
+
+    def test_packaged_runtime_requires_docker_with_the_firewalld_fix(self):
+        self.packaged()
+        for version, ok in (('28.0.1', False), ('28.2.0', False), ('28.3.2', False), ('27.5.1', False), ('', False),
+                            ('28.3.3', True), ('28.5.1', True), ('29.0.0', True)):
+            self.docker_version = version + '\n'
+            result = self.install()
+            self.assertEqual(result.ok, ok, version)
+            if not ok:
+                self.assertEqual(result.code(), 10)
+                self.assertIn('28.3.3', result.summary)
+
+    def test_incomplete_download_fails_and_keeps_the_old_compose(self):
+        self.packaged()
+        self.home.mkdir()
+        (self.home / 'compose.yml').write_text('OLD COMPOSE\n')
+        io.write_config(self.home, {'pool': 's1-fast', 'manifest_id': 'old'})
+
+        def partial(cmd, **kwargs):
+            self.calls.append(cmd)
+            if cmd == ['docker', 'version', '--format', '{{.Server.Version}}']:
+                return 0, '28.3.3\n', ''
+            if len(cmd) > 6 and 'snapshot_download' in cmd[3]:
+                target = pathlib.Path(cmd[6])
+                (target / 'adapter_config.json').write_bytes(b'{}')
+                (target / 'tokenizer').mkdir(parents=True, exist_ok=True)
+                (target / 'tokenizer' / 'tokenizer.json').write_bytes(b'')  # empty: matched nothing real
+            return 0, '', ''
+        with patch.object(io, 'runner', side_effect=partial):
+            result = self.install(accept_manifest_change=True)
+        self.assertEqual(result.code(), 13)
+        self.assertIn('incomplete', result.summary)
+        self.assertEqual(result.data['missing'], ['tokenizer/tokenizer.json'])
+        self.assertEqual((self.home / 'compose.yml').read_text(), 'OLD COMPOSE\n')
+        self.assertFalse((self.home / 'compose.next.yml').exists())
+        self.assertEqual(io.read_config(self.home)['pool'], 's1-fast')
+
+    def test_symlinked_or_missing_download_files_are_refused(self):
+        root = self.home / 'dl'
+        (root / 'sub').mkdir(parents=True)
+        (root / 'real.bin').write_bytes(b'x')
+        (root / 'link.bin').symlink_to(root / 'real.bin')
+        (root / 'sub' / 'ok.json').write_bytes(b'{}')
+        self.assertEqual(io.missing_files(root, ['real.bin', 'link.bin', 'sub/ok.json', 'gone.bin', 'sub']),
+                         ['link.bin', 'gone.bin', 'sub'])
+        empty = self.home / 'empty'
+        (empty / '.cache').mkdir(parents=True)
+        (empty / '.cache' / 'x').write_bytes(b'x')
+        self.assertEqual(io.missing_files(empty, None), ['(no files)'])
+        self.assertEqual(io.missing_files(root, None), [])
+
+    def test_failed_image_pull_keeps_the_old_compose(self):
+        self.home.mkdir()
+        (self.home / 'compose.yml').write_text('OLD COMPOSE\n')
+
+        def pull_fails(cmd, **kwargs):
+            self.calls.append(cmd)
+            if cmd[:2] == ['docker', 'compose'] and cmd[-1] == 'pull':
+                self.assertTrue(cmd[3].endswith('compose.next.yml'))
+                return 1, '', 'denied'
+            return 0, '', ''
+        with patch.object(io, 'runner', side_effect=pull_fails):
+            result = self.install()
+        self.assertEqual(result.code(), 13)
+        self.assertEqual((self.home / 'compose.yml').read_text(), 'OLD COMPOSE\n')
+        self.assertFalse((self.home / 'compose.next.yml').exists())
 
     def test_coming_model_is_refused_before_any_command_runs(self):
         coming = live_model(status='coming')

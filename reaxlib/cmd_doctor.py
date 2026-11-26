@@ -172,6 +172,12 @@ def diagnose(args, probe=None, host=None, release=None):
         denied = 'permission denied' in (info['stderr'] + info['stdout']).lower()
         fix = ('Grant this user Docker access, then log out and back in: https://docs.docker.com/engine/install/linux-postinstall/' if denied else 'Start Docker Engine and check its daemon: ' + DOCKER_DOC)
         block('docker_daemon', 'Docker daemon access denied.' if denied else 'Docker daemon is unreachable.', fix)
+    server_version = info_data.get('ServerVersion') if isinstance(info_data, dict) else None
+    docker['server_version'] = server_version
+    if docker['daemon_reachable'] and isinstance(server_version, str):
+        from .cmd_install import DOCKER_FLOOR_TEXT, docker_loopback_safe
+        if not docker_loopback_safe(server_version):
+            warnings.append('Docker Engine {} is older than {}: portfolio models (packaged runtimes) will not install. Engines 28.2.0 to 28.3.2 can expose loopback-only ports after a firewalld reload (CVE-2025-54388); update Docker Engine: {}'.format(server_version, DOCKER_FLOOR_TEXT, DOCKER_DOC))
     if not docker['compose']:
         block('compose', 'Docker Compose plugin is unavailable.', 'Install the Compose plugin: https://docs.docker.com/compose/install/linux/')
     toolkit = call(['nvidia-container-cli', '--version'])

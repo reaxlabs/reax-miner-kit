@@ -242,7 +242,7 @@ def runtime_image_key(pool, jetson=False):
     return base + '_jetson' if jetson and pool.get('jetson') else base
 
 
-def render(home, d, config, source=None):
+def render(home, d, config, source=None, path=None):
     from .descriptor import validate
     from .models import PACKAGED_RUNTIME
     validate(d)
@@ -327,7 +327,7 @@ def render(home, d, config, source=None):
                          '      - ' + q(str(wallet / 'coldkeypub.txt') + ':/wallets/' + config.get('wallet_name', 'reax') + '/coldkeypub.txt:ro'),
                          '    ulimits:', '      nofile: {soft: 65536, hard: 65536}']
     from .state import write_text
-    write_text(home / 'compose.yml', '\n'.join(services) + '\n', 0o644)
+    write_text(path or home / 'compose.yml', '\n'.join(services) + '\n', 0o644)
     values = {'REAX_MECHANISM': 's1', 'REAX_MODEL': pool['id'], 'REAX_NETWORK': config['network'],
               'REAX_NETUID': config['netuid'], 'REAX_WALLET_PATH': '/wallets',
               'REAX_WALLET_NAME': config.get('wallet_name', 'reax'), 'REAX_WALLET_HOTKEY': hotkey,
@@ -400,9 +400,8 @@ def install(args):
                 return Result('install', 'blocked', 'Docker daemon and compose plugin must be available.', exit_code=10)
         if packaged:
             rc, version, _ = runner(['docker', 'version', '--format', '{{.Server.Version}}'])
-            major = re.match(r'\s*(\d+)\.', version)
-            if rc or major is None or int(major.group(1)) < 28:
-                return Result('install', 'blocked', 'Update Docker Engine to 28 or later for isolated loopback access to this model.', exit_code=10)
+            if rc or not docker_loopback_safe(version):
+                return Result('install', 'blocked', 'Update Docker Engine to {} or later for isolated loopback access to this model.'.format(DOCKER_FLOOR_TEXT), exit_code=10)
         if not d['images'].get('public') and not os.environ.get('REAX_SOURCE_DIR'):
             return Result('install', 'blocked', 'Release images are not yet marked available; supply REAX_SOURCE_DIR for a local build.', exit_code=12)
     if (mode == 'localnet' or not d['images'].get('public')) and not (os.environ.get('REAX_SOURCE_DIR') or read_config(home).get('source_dir') or d['source'].get('public')):
@@ -460,41 +459,102 @@ def install(args):
         os.close(fd)
     (home / 'logs').mkdir(exist_ok=True)
     if mode != 'localnet':
-        render(home, d, config, source)
-        rc, _, _ = runner(['docker', 'compose', '-f', str(home / 'compose.yml'), 'pull' if d['images'].get('public') else 'build'], timeout=1800)
-        if rc:
-            return Result('install', 'error', 'Image download or build failed.', exit_code=13)
-        mark(home, 'images', {'images': d['images']})
-        weights = pool['weights']
-        if packaged:
-            root = packaged_cache(home, pool)
-            downloads = [(item, root / item['cache_id'] / item['revision'])
-                         for item in [weights] + weights.get('dependencies', [])]
-        else:
-            downloads = [(weights, weights_dir(home, pool))]
-        script = 'from huggingface_hub import snapshot_download; import sys; snapshot_download(repo_id=sys.argv[1],revision=sys.argv[2],local_dir=sys.argv[3],allow_patterns=sys.argv[4:] or None)'
-        # Keep the Hugging Face cache under this kit home, which may run as a non-root user.
-        hf_env = dict(os.environ, HF_HOME=str(home / 'hf-cache'))
-        if packaged:
-            hf_env['HF_HUB_DISABLE_IMPLICIT_TOKEN'] = '1'
-        for item, target in downloads:
-            target.mkdir(parents=True, exist_ok=True)
-            command = [str(home / 'venv/bin/python'), '-I', '-c', script,
-                       item['repo'], item['revision'], str(target)] + item.get('files', [])
-            rc, _, hf_err = runner(command, timeout=7200, env=hf_env)
-            if not rc:
-                continue
-            if weights.get('gated'):
-                return human('install', 'Accept the weights gate with your own Hugging Face account.',
-                             'The gated model requires account access; reaxctl never asks for your token.',
-                             ['Accept access on the model page.', str(home / 'venv/bin/hf') + ' auth login', 'Retry reaxctl install.'],
-                             'https://huggingface.co/' + weights['repo'])
-            return Result('install', 'error', 'Pinned weights download failed; retry install.', data={'detail': detail(hf_err)}, exit_code=13)
-        mark(home, 'weights', weights)
+        # Stage the new compose file next to the live one; it replaces compose.yml only after
+        # images and weights are in place, so a failed install never leaves compose.yml pointing
+        # at a model whose weights are missing while config.json still names the old one.
+        staged = home / 'compose.next.yml'
+        render(home, d, config, source, path=staged)
+        failure = stage(runner, home, d, pool, packaged, staged)
+        if failure:
+            try:
+                staged.unlink()
+            except OSError:
+                pass
+            return failure
+        from .state import write_text
+        write_text(home / 'compose.yml', staged.read_text(), 0o644)
+        staged.unlink()
+        mark(home, 'weights', pool['weights'])
     write_config(home, config)
     mark(home, 'install', {'release_id': d['release_id'], 'mode': mode})
     return Result('install', summary='Installation prepared.', data={'home': str(home), 'mode': mode, 'token_path': str(secret)},
                   next=[{'command': 'reaxctl localnet up' if mode == 'localnet' else 'reaxctl wallet status', 'why': 'Continue setup.'}])
+
+
+def stage(runner, home, d, pool, packaged, compose_file):
+    """Pull or build the images and download the pinned weights; return a failure Result or None."""
+    rc, _, _ = runner(['docker', 'compose', '-f', str(compose_file), 'pull' if d['images'].get('public') else 'build'], timeout=1800)
+    if rc:
+        return Result('install', 'error', 'Image download or build failed.', exit_code=13)
+    mark(home, 'images', {'images': d['images']})
+    weights = pool['weights']
+    if packaged:
+        root = packaged_cache(home, pool)
+        downloads = [(item, root / item['cache_id'] / item['revision'])
+                     for item in [weights] + weights.get('dependencies', [])]
+    else:
+        downloads = [(weights, weights_dir(home, pool))]
+    script = 'from huggingface_hub import snapshot_download; import sys; snapshot_download(repo_id=sys.argv[1],revision=sys.argv[2],local_dir=sys.argv[3],allow_patterns=sys.argv[4:] or None)'
+    # Keep the Hugging Face cache under this kit home, which may run as a non-root user.
+    hf_env = dict(os.environ, HF_HOME=str(home / 'hf-cache'))
+    if packaged:
+        hf_env['HF_HUB_DISABLE_IMPLICIT_TOKEN'] = '1'
+    for item, target in downloads:
+        target.mkdir(parents=True, exist_ok=True)
+        command = [str(home / 'venv/bin/python'), '-I', '-c', script,
+                   item['repo'], item['revision'], str(target)] + item.get('files', [])
+        rc, _, hf_err = runner(command, timeout=7200, env=hf_env)
+        if rc and weights.get('gated'):
+            return human('install', 'Accept the weights gate with your own Hugging Face account.',
+                         'The gated model requires account access; reaxctl never asks for your token.',
+                         ['Accept access on the model page.', str(home / 'venv/bin/hf') + ' auth login', 'Retry reaxctl install.'],
+                         'https://huggingface.co/' + weights['repo'])
+        if rc:
+            return Result('install', 'error', 'Pinned weights download failed; retry install.', data={'detail': detail(hf_err)}, exit_code=13)
+        missing = missing_files(target, item.get('files'))
+        if missing:
+            return Result('install', 'error', 'Pinned weights download is incomplete; retry install.',
+                          data={'repo': item['repo'], 'missing': missing[:10]}, exit_code=13)
+    return None
+
+
+def missing_files(target, files):
+    """Files of a download that are absent, empty, not regular or reached through a symbolic link."""
+    import stat
+    target = pathlib.Path(target)
+    if not files:
+        found = any(p.is_file() and not p.is_symlink() and p.stat().st_size > 0
+                    for p in target.rglob('*') if not any(part.startswith('.') for part in p.relative_to(target).parts))
+        return [] if found else ['(no files)']
+    bad = []
+    for name in files:
+        path, ok = target, True
+        for part in name.split('/'):
+            path = path / part
+            try:
+                info = os.lstat(str(path))
+            except OSError:
+                ok = False
+                break
+            if stat.S_ISLNK(info.st_mode):
+                ok = False
+                break
+        if not ok or not stat.S_ISREG(info.st_mode) or info.st_size <= 0:
+            bad.append(name)
+    return bad
+
+
+# Docker Engine 28.2.0 up to 28.3.2 drops the rules that keep 127.0.0.1-published ports local
+# when firewalld reloads (CVE-2025-54388, fixed in 28.3.3); older engines lack the loopback isolation.
+DOCKER_FLOOR = (28, 3, 3)
+DOCKER_FLOOR_TEXT = '28.3.3'
+
+
+def docker_loopback_safe(version):
+    match = re.match(r'\s*(\d+)\.(\d+)(?:\.(\d+))?', version or '')
+    if not match:
+        return False
+    return tuple(int(x or 0) for x in match.groups()) >= DOCKER_FLOOR
 
 
 def register(sub):

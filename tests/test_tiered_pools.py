@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from reaxlib import cmd_install as install, descriptor, sysprobe
 from reaxlib.cmd_doctor import diagnose
+from kit_fixtures import fake_download
 
 BUNDLED = json.loads(descriptor.BUNDLED.read_text())
 LAUNCH = copy.deepcopy(BUNDLED)  # the bundled 1.2.0rc11.post7 descriptor: all four pools enabled
@@ -31,9 +32,12 @@ def host(**kw):
     return base
 
 
-def doctor(h, smi=None, runtime=True, pool=None, mode=None):
+def doctor(h, smi=None, runtime=True, pool=None, mode=None, server_version=None):
     cmds = {k: {'returncode': 0, 'stdout': v, 'stderr': ''} for k, v in GOOD_CMDS.items()}
-    cmds['docker info --format {{json .}}'] = {'returncode': 0, 'stdout': json.dumps({'Runtimes': {'runc': {}, **({'nvidia': {}} if runtime else {})}}), 'stderr': ''}
+    info = {'Runtimes': {'runc': {}, **({'nvidia': {}} if runtime else {})}}
+    if server_version:
+        info['ServerVersion'] = server_version
+    cmds['docker info --format {{json .}}'] = {'returncode': 0, 'stdout': json.dumps(info), 'stderr': ''}
     if runtime:
         cmds['nvidia-container-cli --version'] = {'returncode': 0, 'stdout': '1.17', 'stderr': ''}
     if smi:
@@ -335,11 +339,21 @@ class InstallTests(unittest.TestCase):
                 runner.assert_not_called()
                 self.assertFalse(home.exists())
 
+    def test_doctor_warns_about_docker_without_the_firewalld_fix(self):
+        smi = 'NVIDIA GeForce RTX 4090, 24564, 580.65'
+        old = doctor(host(), smi=smi, server_version='28.3.2')
+        self.assertTrue(any('CVE-2025-54388' in w and '28.3.3' in w for w in old.warnings), old.warnings)
+        self.assertEqual(old.data['docker']['server_version'], '28.3.2')
+        for fixed in ('28.3.3', '29.1.0'):
+            self.assertFalse(any('CVE-2025-54388' in w for w in doctor(host(), smi=smi, server_version=fixed).warnings))
+        self.assertFalse(any('CVE-2025-54388' in w for w in doctor(host(), smi=smi).warnings))
+
     def test_testnet_download_fetches_only_listed_file(self):
         calls = []
 
         def runner(cmd, **kw):
             calls.append(cmd)
+            fake_download(cmd)
             return 0, '', ''
         with tempfile.TemporaryDirectory() as tmp, patch.object(install, 'descriptor', return_value=self.live()), \
                 patch.object(install, 'runner', side_effect=runner), patch.object(install, 'prepare_tools', return_value=None), \

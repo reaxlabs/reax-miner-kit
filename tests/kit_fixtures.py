@@ -38,3 +38,13 @@ def release_with(*extra_models, **kwargs):
     value['requirements']['never_publish_ports'] = value['requirements']['never_publish_ports'] + list(kwargs.get('ports', (8105, 8106, 8107)))
     value['models'] = list(extra_models)
     return copy.deepcopy(value)
+
+
+def fake_download(cmd):
+    """Act like snapshot_download for a mocked runner: write the listed files (or one file) under local_dir."""
+    if len(cmd) > 6 and cmd[2] == '-c' and 'snapshot_download' in cmd[3]:
+        target = pathlib.Path(cmd[6])
+        for name in cmd[7:] or ['model.safetensors']:
+            path = target / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b'weights')
