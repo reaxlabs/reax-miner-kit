@@ -583,6 +583,8 @@ class CatalogInstallTest(unittest.TestCase):
 
     def runner(self, cmd, **kwargs):
         self.calls.append(cmd)
+        if cmd == ['docker', 'version', '--format', '{{.Server.Version}}']:
+            return 0, '28.0.1\n', ''
         return 0, '', ''
 
     def install(self, **kw):

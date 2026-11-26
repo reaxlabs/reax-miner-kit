@@ -398,6 +398,11 @@ def install(args):
         for cmd in (['docker', 'info'], ['docker', 'compose', 'version']):
             if runner(cmd)[0]:
                 return Result('install', 'blocked', 'Docker daemon and compose plugin must be available.', exit_code=10)
+        if packaged:
+            rc, version, _ = runner(['docker', 'version', '--format', '{{.Server.Version}}'])
+            major = re.match(r'\s*(\d+)\.', version)
+            if rc or major is None or int(major.group(1)) < 28:
+                return Result('install', 'blocked', 'Update Docker Engine to 28 or later for isolated loopback access to this model.', exit_code=10)
         if not d['images'].get('public') and not os.environ.get('REAX_SOURCE_DIR'):
             return Result('install', 'blocked', 'Release images are not yet marked available; supply REAX_SOURCE_DIR for a local build.', exit_code=12)
     if (mode == 'localnet' or not d['images'].get('public')) and not (os.environ.get('REAX_SOURCE_DIR') or read_config(home).get('source_dir') or d['source'].get('public')):
