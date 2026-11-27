@@ -59,36 +59,51 @@ be zero. Nothing already earned is taken away.
   within 48 hours of that operator's own qualification. It is paid on top of the cap, from the pot's unpaid budget. Once per
   coldkey per model; at most one bonus round per model every 30 days.
 
+## Illustrative pot budgets
+
+For 12 listed global models the weights add up to **7.63** (six 96 GB models, one 48 GB, two 24 GB, two
+16 GB, one CPU; mammoth-1 is EU-only and not counted). The examples below show budgets per 1,000 alpha of miner
+emissions, before the cap, the pioneer bonus and any EU-layer pay. Pay starts only after the reference checks and the confirmed launch.
+
+| Pot | Budget per 1,000 alpha of miner emissions | Share of all miner emissions |
+|---|---|---|
+| d3, Karpo Decision 31B, Clef 27B (96 GB, each) | 450 x 1.0 / 7.63 = **59.0** | 5.90 % |
+| Blink v0.3 (48 GB) | 450 x 0.6 / 7.63 = **35.4** | 3.54 % |
+| Torchcast Decision 4B (16 GB) | 450 x 0.15 / 7.63 = **8.8** | 0.88 % |
+
+A listed pot that has not opened keeps its budget unpaid. It does not raise any open pot's budget. During the first 7
+days after launch it goes to today's pools (never more than today), after that it is burned. The worked examples below use the same 7.63.
+
 ## Worked examples (in alpha, not prices)
 
 All examples count **alpha per 1,000 alpha of miner emissions**: whatever the subnet emits to miners, 450 of every 1,000
-go to the inference pots. They assume all 13 global pots in the model list are listed (weights add up to 8.63: seven
+go to the inference pots. They use the 12 global pots in the model list (weights add up to 7.63: six
 96 GB models, one 48 GB, two 24 GB, two 16 GB, one CPU) and no EU-layer pay. EU-layer pay comes out of the same 45 % and
 makes every pot slightly smaller.
 
 | Pot | Budget per 1,000 alpha of miner emissions |
 |---|---|
-| a 96 GB model (e.g. d3) | 450 x 1.0 / 8.63 = **52.1** |
-| the 48 GB model (Blink) | 450 x 0.6 / 8.63 = **31.3** |
-| a 24 GB model (e.g. elephant-1) | 450 x 0.35 / 8.63 = **18.3** |
-| a 16 GB model (e.g. Kev 4B) | 450 x 0.15 / 8.63 = **7.8** |
-| the CPU model (Laya) | 450 x 0.03 / 8.63 = **1.6** |
+| a 96 GB model (e.g. d3) | 450 x 1.0 / 7.63 = **59.0** |
+| the 48 GB model (Blink) | 450 x 0.6 / 7.63 = **35.4** |
+| a 24 GB model (e.g. elephant-1) | 450 x 0.35 / 7.63 = **20.6** |
+| a 16 GB model (e.g. Kev 4B) | 450 x 0.15 / 7.63 = **8.8** |
+| the CPU model (Laya) | 450 x 0.03 / 7.63 = **1.8** |
 
-**Example A, two operators and the cap.** In the d3 pot (52.1), operator A has 3 full units and operator B has 1.
-A's share is 75 %, capped at 50 %: **26.1**. B's share is 25 %: **13.0**. The remaining 13.0 is not paid to A or B; in the
+**Example A, two operators and the cap.** In the d3 pot (59.0), operator A has 3 full units and operator B has 1.
+A's share is 75 %, capped at 50 %: **29.5**. B's share is 25 %: **14.7**. The remaining 14.7 is not paid to A or B; in the
 first 7 days it goes to today's pools, then it is burned. If a third operator C joins with 2 units, the shares become A 50 %,
-B 16.7 %, C 33.3 %: A **26.1**, B **8.7**, C **17.4**, and nothing is left unpaid.
+B 16.7 %, C 33.3 %: A **29.5**, B **9.8**, C **19.7**, and nothing is left unpaid.
 
-**Example B, a small node alone.** Operator D is alone in the elephant-1 pot (18.3) with a slow GPU worth 0.4 units. Its
-share is 100 %, but its cap is 0.4 x 50 % = 20 %: **3.7**. With one full unit it would get the full 50 %: **9.1**.
+**Example B, a small node alone.** Operator D is alone in the elephant-1 pot (20.6) with a slow GPU worth 0.4 units. Its
+share is 100 %, but its cap is 0.4 x 50 % = 20 %: **4.1**. With one full unit it would get the full 50 %: **10.3**.
 
-**Example C, pioneer bonus.** Operator E is the first to qualify in a newly listed 96 GB pot (52.1), with one full unit, and
-is alone. Base pay: 50 % = **26.1**. Bonus +50 % at qualification: **39.1**; after 24 hours +25 %: **32.6**; after 48 hours
-no bonus: **26.1**. The bonus comes from the half of the pot that E cannot earn under the cap.
+**Example C, pioneer bonus.** Operator E is the first to qualify in a newly listed 96 GB pot (59.0), with one full unit, and
+is alone. Base pay: 50 % = **29.5**. Bonus +50 % at qualification: **44.2**; after 24 hours +25 %: **36.9**; after 48 hours
+no bonus: **29.5**. The bonus comes from the half of the pot that E cannot earn under the cap.
 
-**Example D, TEE bonus (once it is live).** Three operators with 2 full units each serve the Karpo pot (52.1). F runs a
-verified TEE node, so its 2 units count as 3. Shares: F 3/7 = 42.9 %, G and H 2/7 = 28.6 % each: F **22.3**, G and H
-**14.9** each. Without the TEE each would get a third: **17.4**.
+**Example D, TEE bonus (once it is live).** Three operators with 2 full units each serve the Karpo pot (59.0). F runs a
+verified TEE node, so its 2 units count as 3. Shares: F 3/7 = 42.9 %, G and H 2/7 = 28.6 % each: F **25.3**, G and H
+**16.9** each. Without the TEE each would get a third: **19.7**.
 
 ## TEE: what, why, how to join
 
@@ -128,7 +143,7 @@ A GPU, host, IP or hotkey cannot be in both layers. EU interest: ask in #92 and 
 | When | What happens |
 |---|---|
 | Now | The four existing pools continue at their current rates. Keep using the current miner kit. |
-| Start (announced at least 24 hours ahead). See the [current target](#paid-start-update). | Pots open for every model whose reference check has passed; the others join when their check passes, without further notice. |
+| Start (announced at least 24 hours ahead). See the [current target](#paid-start-update). | Pots open for every model whose reference check has passed. The others join when their check passes, without further notice. |
 | First 7 days after the start | Today's pools are paid only what the pots do not pay out, never more than today. Then they end. |
 | Once validators send scored pot traffic to attested nodes (confirmed in #92) | TEE units count 1.5x. |
 | Monday 30 November 2026 | TEE check: at least two TEE operators in every listed model's open global pot? All or nothing. |
@@ -212,22 +227,21 @@ A GPU, host, IP or hotkey cannot be in both layers. EU interest: ask in #92 and 
 ## Model list v1 (pots)
 | Model | GPU class | At start? |
 |---|---|---|
-| d3 (vllm-sr/d3) | 96 GB | planned at start |
-| Karpo Decision 31B | 96 GB | planned at start |
-| Clef 27B (Cloudflare/clef) | 96 GB | planned at start |
-| Blink v0.3 NVFP4 | 48 GB, Blackwell only | planned at start |
-| elephant-1 (bf16) | 24 GB | planned at start |
-| Torchcast Decision 4B | 16 GB | planned at start |
-| Kev 4B (no batching, one at a time) | 16 GB | planned at start |
-| Laya 421M | CPU (or GPU in fp32) | planned at start |
+| d3 (vllm-sr/d3) | 96 GB | subject to launch checks |
+| Karpo Decision 31B | 96 GB | subject to launch checks |
+| Clef 27B (Cloudflare/clef) | 96 GB | subject to launch checks |
+| Blink v0.3 NVFP4 | 48 GB, Blackwell only | subject to launch checks |
+| elephant-1 (bf16) | 24 GB | joins when its check passes |
+| Torchcast Decision 4B | 16 GB | subject to launch checks |
+| Kev 4B (no batching, one at a time) | 16 GB | joins when its check passes |
+| Laya 421M | CPU (or GPU in fp32) | joins when its check passes |
 | Torchcast Decision 31B (no batching, one at a time) | 96 GB | joins when its check passes |
 | Perplexity Decider v1.3 | 96 GB | joins when its check passes |
 | Clef Flash | 24 GB | joins when its check passes |
 | AutoTrust Decider Pro 35B | 96 GB | joins when its check passes |
 | mammoth-1 | 96 GB | EU operators only |
 
-REAX 1.3 is not part of the v2 pots for now. "Planned at start" is a plan, not a promise: a model opens only after its
-reference check passes.
+REAX 1.3 is outside the v2 pots for now. A model opens after its reference check passes. See the [live mining rules](https://reax.co/mining/v2/) for the current launch status.
 
 ## How to start
 ```sh
