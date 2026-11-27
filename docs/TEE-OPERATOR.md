@@ -1,7 +1,7 @@
 # TEE nodes for inference mining: operator setup
 
 Rule 10 of [INFERENCE-MINING-V2.md](INFERENCE-MINING-V2.md) has the dates and the bonus. This page explains how to set
-up a node our validators can attest. Everything you need is in [`tee/`](../tee) in this repository.
+up a T1 node our verifier can attest. The T1 setup files are in [`tee/`](../tee) in this repository.
 
 **Current scope:** global TEE nodes (open pots) have no EU location requirement: the verifier for the global pots runs
 without the EU location check. The EU layer (rule 8) keeps it; its policy also checks that the node is in the EU
@@ -16,7 +16,7 @@ A TEE node is a confidential VM with a confidential-computing GPU. Our verifier 
 - the GPU evidence (NVIDIA, confidential computing on) for every GPU in the VM;
 - that the report is bound to our nonce, your miner hotkey, the agent's TLS key and the node's WireGuard key, so it
   cannot be replayed or moved to another hotkey;
-- the launch measurement against our approved list (T1 = approved stock image, T2 = our measured image).
+- the launch measurement against our approved list (T1 = approved stock image, T2 = approved measured image).
 
 A verdict is valid for 6 hours and is refreshed about every hour. If a check fails, the node simply does not count as
 TEE until the next good verdict.
@@ -25,7 +25,7 @@ TEE until the next good verdict.
 
 | CPU TEE | GPU | Status |
 | --- | --- | --- |
-| AMD SEV-SNP (EPYC Turin) | RTX PRO 6000 Blackwell Server Edition, CC on | proven live end to end (T1 and T2) on Verda FIN-03 |
+| AMD SEV-SNP (EPYC Turin) | RTX PRO 6000 Blackwell Server Edition, CC on | T1 setup available on Verda FIN-03. For T2, see below. |
 | AMD SEV-SNP (EPYC Genoa / Milan) | as above | on request: not accepted yet (no firmware minimum configured, so the verifier rejects it) |
 | AMD SEV-SNP | H100 / H200 / B200, CC on | verifier code ready; policy and image after a first test node |
 | Intel TDX (Xeon 5th gen / Xeon 6) | H100 / H200 / B200, CC on | verifier code ready; policy and TDX guest image after a first test node |
@@ -59,24 +59,15 @@ T1 attests a known stock image. It is the fastest way in.
 Podman tips from our live runs: tmpfs mounts need `U` (not `uid=`), and `--read-only` containers break
 `nvidia-cdi-hook`.
 
-## T2: our measured image
+## T2: confirm the image before renting
 
-T2 boots our published image with a dm-verity root (no SSH, no interactive root). Its launch digest is fixed, so the
-verifier can check exactly what runs. T2 means our published image: the build is not bit-reproducible, so an image you
-build yourself gets a different digest and fails T2 until that digest is approved by us (ask in #92). Build it with `tee/image/build-on-verda.sh` (see `tee/image/DESIGN.md`).
-The approved values for the current release are in [`tee/GOLDEN-T2-2026-11-24.json`](../tee/GOLDEN-T2-2026-11-24.json):
+T2 uses an approved measured image with a dm-verity root. The verifier checks its exact launch measurement.
+For a self-service setup, use the [T1 instructions above](#t1-about-15-minutes-on-a-verda-confidential-vm).
+If you need T2, ask in #92 for the current approved image, its artifact hashes and the instructions for
+your lane before renting or replacing your boot image.
 
-| Field | Value |
-| --- | --- |
-| Platform | Verda `1RTXPRO6000.30V.CC`, image `24.04.cuda13.4.cc`, kernel 6.8.0-149, 30 vCPU EPYC-Turin |
-| SNP launch digest | `f7375d2bf39370f66ea5c176b88a918872a91812f25e4905f3767925d56d4f53dca57bd3292604c996755a079fa8e436` |
-| dm-verity root hash | `dff1a84385ef7a2221e87970bbbe22b98e4dcaec0408fadb6a7a83ad7031cf4a` |
-| Verifier policy | `tee/policy/t2-verda-rtxpro6000-cc-2404-release-f7375d2bf393.json` |
-
-The golden file lists the artifact hashes the digest was computed from (`sev-snp-measure==0.0.13`), so you can check
-that the published image matches it. Our validators run the policy `eu-validator-v1` (T1 stock image
-and T2 release image both accepted, T1 is the minimum). When T2 becomes the required level we announce it in #92 first;
-until then T1 and T2 both count as TEE.
+The 24 November test image and its measurement files are historical. The verifier requires the current
+approved measurement for T2. A locally rebuilt image also needs its own approved measurement.
 
 ## Privacy
 
