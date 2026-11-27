@@ -5,6 +5,10 @@ worked examples and answers to the questions miners have asked. No rule changed.
 [The rules in full](#the-rules-in-full-binding-text); the sections before it explain it. These rules describe the planned
 validator release; its start is announced at least 24 hours ahead.
 
+## Paid start update
+
+Keep your current setup. The existing pools and payouts continue at their current rates. The current target is Tuesday, 1 December 2026 at 14:00 UTC, subject to the verification checks passing. See the [live mining rules](https://reax.co/mining/v2/) for the current status.
+
 ## What you mine
 
 You serve one of the decision models on our list (see [Model list](#model-list-v1-pots)) on your own GPU or CPU, with the
@@ -55,11 +59,11 @@ be zero. Nothing already earned is taken away.
   within 48 hours of that operator's own qualification. It is paid on top of the cap, from the pot's unpaid budget. Once per
   coldkey per model; at most one bonus round per model every 30 days.
 
-## The pots at the start
+## Illustrative pot budgets
 
-At the start 12 global models are listed, so the weights add up to **7.63** (six 96 GB models, one 48 GB, two 24 GB, two
-16 GB, one CPU; mammoth-1 is EU-only and not counted). Five pots pay from the start. Budgets per 1,000 alpha of miner
-emissions, before the cap, the pioneer bonus and any EU-layer pay:
+For 12 listed global models the weights add up to **7.63** (six 96 GB models, one 48 GB, two 24 GB, two
+16 GB, one CPU; mammoth-1 is EU-only and not counted). The examples below show budgets per 1,000 alpha of miner
+emissions, before the cap, the pioneer bonus and any EU-layer pay. Pay starts only after the reference checks and the confirmed launch.
 
 | Pot | Budget per 1,000 alpha of miner emissions | Share of all miner emissions |
 |---|---|---|
@@ -67,9 +71,8 @@ emissions, before the cap, the pioneer bonus and any EU-layer pay:
 | Blink v0.3 (48 GB) | 450 x 0.6 / 7.63 = **35.4** | 3.54 % |
 | Torchcast Decision 4B (16 GB) | 450 x 0.15 / 7.63 = **8.8** | 0.88 % |
 
-The seven listed pots that do not pay yet (elephant-1, Kev 4B, Laya, Torchcast Decision 31B, Perplexity Decider v1.3,
-Clef Flash, AutoTrust Decider Pro 35B) keep their budget unpaid. It does not raise the five open pots. During the first 7
-days it goes to today's pools (never more than today), after that it is burned. The worked examples below use the same 7.63.
+A listed pot that has not opened keeps its budget unpaid. It does not raise any open pot's budget. During the first 7
+days after launch it goes to today's pools (never more than today), after that it is burned. The worked examples below use the same 7.63.
 
 ## Worked examples (in alpha, not prices)
 
@@ -139,8 +142,8 @@ A GPU, host, IP or hotkey cannot be in both layers. EU interest: ask in #92 and 
 
 | When | What happens |
 |---|---|
-| Now | Today's four pools run unchanged. The v2 kit is out. |
-| Start: Friday 27 November 2026, 09:00 UTC (announced in #92 on 26 November) | Pots open for every model whose reference check has passed: d3, Karpo Decision 31B, Clef 27B, Blink v0.3 and Torchcast Decision 4B. The others join when their check passes, without further notice. |
+| Now | The four existing pools continue at their current rates. Keep using the current miner kit. |
+| Start (announced at least 24 hours ahead). See the [current target](#paid-start-update). | Pots open for every model whose reference check has passed. The others join when their check passes, without further notice. |
 | First 7 days after the start | Today's pools are paid only what the pots do not pay out, never more than today. Then they end. |
 | Once validators send scored pot traffic to attested nodes (confirmed in #92) | TEE units count 1.5x. |
 | Monday 30 November 2026 | TEE check: at least two TEE operators in every listed model's open global pot? All or nothing. |
@@ -206,8 +209,7 @@ A GPU, host, IP or hotkey cannot be in both layers. EU interest: ask in #92 and 
    answers, so they can run as many parallel requests as their hardware answers correctly. They are paid per verified,
    attested GPU-hour, always more than the same GPU class earns in the open pots; the exact rate is in the operator
    agreement. A GPU, host or IP cannot be in both layers.
-9. **Start.** The validator release with the pots starts at a time announced at least 24 hours ahead, **at the latest on
-   Tuesday 1 December 2026**. Models whose check has passed are open from
+9. **Start.** The validator release with the pots starts at a time announced at least 24 hours ahead, with the [current target](#paid-start-update) subject to verification. Models whose check has passed are open from
    the start; the others join as soon as their check passes, without further notice.
 10. **TEE for all inference mining.** TEE (confidential computing with attestation) becomes the standard in every pot,
     global and EU. GPU-hours with a valid TEE attestation count 1.5x toward your pot share as soon as validators send
@@ -225,12 +227,12 @@ A GPU, host, IP or hotkey cannot be in both layers. EU interest: ask in #92 and 
 ## Model list v1 (pots)
 | Model | GPU class | At start? |
 |---|---|---|
-| d3 (vllm-sr/d3) | 96 GB | open from the start |
-| Karpo Decision 31B | 96 GB | open from the start |
-| Clef 27B (Cloudflare/clef) | 96 GB | open from the start |
-| Blink v0.3 NVFP4 | 48 GB, Blackwell only | open from the start |
+| d3 (vllm-sr/d3) | 96 GB | subject to launch checks |
+| Karpo Decision 31B | 96 GB | subject to launch checks |
+| Clef 27B (Cloudflare/clef) | 96 GB | subject to launch checks |
+| Blink v0.3 NVFP4 | 48 GB, Blackwell only | subject to launch checks |
 | elephant-1 (bf16) | 24 GB | joins when its check passes |
-| Torchcast Decision 4B | 16 GB | open from the start |
+| Torchcast Decision 4B | 16 GB | subject to launch checks |
 | Kev 4B (no batching, one at a time) | 16 GB | joins when its check passes |
 | Laya 421M | CPU (or GPU in fp32) | joins when its check passes |
 | Torchcast Decision 31B (no batching, one at a time) | 96 GB | joins when its check passes |
@@ -239,8 +241,7 @@ A GPU, host, IP or hotkey cannot be in both layers. EU interest: ask in #92 and 
 | AutoTrust Decider Pro 35B | 96 GB | joins when its check passes |
 | mammoth-1 | 96 GB | EU operators only |
 
-REAX 1.3 is not part of the v2 pots for now. A model opens only after its reference check passes. elephant-1, Kev 4B and
-Laya were planned for the start; their checks are not finished yet, so they join later without further notice.
+REAX 1.3 is outside the v2 pots for now. A model opens after its reference check passes. See the [live mining rules](https://reax.co/mining/v2/) for the current launch status.
 
 ## How to start
 ```sh
