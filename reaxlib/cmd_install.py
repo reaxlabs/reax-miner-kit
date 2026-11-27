@@ -212,6 +212,38 @@ def weights_dir(home, pool):
     return home / 'weights' / pool['id']
 
 
+def packaged_cache(home, pool):
+    return home / 'weights' / pool['id'] / 'packaged'
+
+
+def packaged_items(pool):
+    weights = pool['weights']
+    return [weights] + list(weights.get('dependencies') or [])
+
+
+def runtime_locks(home, pool):
+    """(host file, container path) of the lock file the packaged runtime opens in each weights revision.
+
+    The image's runtime.py takes an flock on <cache>/<cache_id>/<revision>/.runtime.lock before it
+    verifies the files, so it needs that one file writable; everything else under /weights stays read-only."""
+    root = packaged_cache(home, pool)
+    return [(root / item['cache_id'] / item['revision'] / '.runtime.lock',
+             '/weights/' + item['cache_id'] + '/' + item['revision'] + '/.runtime.lock') for item in packaged_items(pool)]
+
+
+def ensure_lock_file(path):
+    """Create an empty regular lock file (never through a symbolic link); return False if the path is unusable."""
+    import stat
+    try:
+        fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | getattr(os, 'O_NOFOLLOW', 0), 0o644)
+    except OSError:
+        return False
+    try:
+        return stat.S_ISREG(os.fstat(fd).st_mode)
+    finally:
+        os.close(fd)
+
+
 def verified_configs(runtime):
     import hashlib
     name = runtime.get('configs')
@@ -238,10 +270,12 @@ def runtime_image_key(pool, jetson=False):
     return base + '_jetson' if jetson and pool.get('jetson') else base
 
 
-def render(home, d, config, source=None):
+def render(home, d, config, source=None, path=None, env_path=None):
     from .descriptor import validate
+    from .models import PACKAGED_RUNTIME
     validate(d)
     pool = pool_of(d, config['pool'])
+    packaged = (pool.get('runtime') or {}).get('contract') == PACKAGED_RUNTIME
     q = lambda value: json.dumps(str(value).replace("$", "$$"))  # JSON quoted scalars are valid YAML scalars.
     on_jetson = bool(config.get('jetson')) and bool(pool.get('jetson'))
     key = runtime_image_key(pool, on_jetson)
@@ -276,7 +310,11 @@ def render(home, d, config, source=None):
     for name, imagekey in [('runtime', key), ('miner', 'miner')]:
         ref = pool['image_ref'] if name == 'runtime' and pool.get('catalog') else image_ref(d, imagekey)
         services += ['  ' + name + ':', '    image: ' + q(ref), '    user: ' + q(uid),
-                     '    init: true', '    network_mode: host', '    restart: unless-stopped', '    cap_drop: [ALL]', '    security_opt: ["no-new-privileges:true"]', '    logging:', '      driver: json-file', '      options:', '        max-size: "10m"', '        max-file: "3"']
+                     '    init: true', '    restart: unless-stopped', '    cap_drop: [ALL]', '    security_opt: ["no-new-privileges:true"]', '    logging:', '      driver: json-file', '      options:', '        max-size: "10m"', '        max-file: "3"']
+        if packaged and name == 'runtime':
+            services += ['    ports:', '      - ' + q('127.0.0.1:{}:8080'.format(pool['sidecar_port']))]
+        else:
+            services += ['    network_mode: host']
         if private and source and not (pool.get('catalog') and name == 'runtime'):
             runtime_dir = 'runtimes/s1-gguf' if gguf else 'runtimes/' + pool['id']
             services += ['    build:', '      context: ' + q(str(source)), '      dockerfile: ' + q('Dockerfile' if name == 'miner' else runtime_dir + ('/Dockerfile.jetson' if on_jetson else '/Dockerfile'))]
@@ -291,14 +329,19 @@ def render(home, d, config, source=None):
                 ccfix += ['      - ' + q(str(configs) + ':' + runtime['env']['FLA_CONFIG_DIR'] + ':ro')]
             if on_jetson:
                 services += ['    runtime: nvidia']  # Jetson exposes its integrated GPU through the nvidia runtime, not a device reservation
-            services += ['    environment:', '      S1M_INTERNAL_TOKEN_FILE: /run/runtime-token',
-                         '      ' + host_var + ': 127.0.0.1',
-                         '      ' + port_var + ': ' + q(str(pool['sidecar_port']))]
+            services += ['    environment:', '      S1M_INTERNAL_TOKEN_FILE: /run/runtime-token']
+            if packaged:
+                services += ['      RUNTIME_PORT: "8080"', '      HF_HUB_OFFLINE: "1"']
+                weight_mount = str(packaged_cache(home, pool)) + ':/weights:ro'
+            else:
+                services += ['      ' + host_var + ': 127.0.0.1', '      ' + port_var + ': ' + q(str(pool['sidecar_port']))]
+                weight_mount = str(weights_dir(home, pool)) + ':/model:ro'
             if gguf:
                 services += ['      GGUF_MODEL_DIR: /model', '      GGUF_N_GPU_LAYERS: ' + q('-1' if nvidia else '0')]
             services += runtime_env
+            locks = ['      - ' + q('{}:{}'.format(host, container)) for host, container in runtime_locks(home, pool)] if packaged else []
             services += ['    volumes:', '      - ' + q(token + ':/run/runtime-token:ro'),
-                         '      - ' + q(str(weights_dir(home, pool)) + ':/model:ro')] + ccfix
+                         '      - ' + q(weight_mount)] + locks + ccfix
             if nvidia and not on_jetson:
                 # --gpu N pins the sidecar to one GPU of a multi-GPU machine (device_ids and count are mutually exclusive in compose)
                 services += ['    deploy:', '      resources:', '        reservations:',
@@ -313,7 +356,7 @@ def render(home, d, config, source=None):
                          '      - ' + q(str(wallet / 'coldkeypub.txt') + ':/wallets/' + config.get('wallet_name', 'reax') + '/coldkeypub.txt:ro'),
                          '    ulimits:', '      nofile: {soft: 65536, hard: 65536}']
     from .state import write_text
-    write_text(home / 'compose.yml', '\n'.join(services) + '\n', 0o644)
+    write_text(path or home / 'compose.yml', '\n'.join(services) + '\n', 0o644)
     values = {'REAX_MECHANISM': 's1', 'REAX_MODEL': pool['id'], 'REAX_NETWORK': config['network'],
               'REAX_NETUID': config['netuid'], 'REAX_WALLET_PATH': '/wallets',
               'REAX_WALLET_NAME': config.get('wallet_name', 'reax'), 'REAX_WALLET_HOTKEY': hotkey,
@@ -329,12 +372,13 @@ def render(home, d, config, source=None):
         values['REAX_ALLOW_DEV_MODELS'] = '1'  # refused on mainnet by the miner; install already refuses dev pools there
     if any('\n' in str(v) or '\r' in str(v) for v in values.values()):
         raise ValueError('Environment values cannot contain newlines')
-    envfile = home / 'miner.env'
+    envfile = env_path or home / 'miner.env'
     from .state import write_text
     write_text(envfile, '\n'.join(k + '=' + str(v).replace('$', '$$') for k, v in values.items()) + '\n')
 
 
 def install(args):
+    from .models import PACKAGED_RUNTIME
     home = home_of(args)
     d = descriptor(args)
     config = read_config(home)
@@ -352,6 +396,7 @@ def install(args):
     pool = pool_of(d, name)
     if not pool:
         return Result('install', 'error', 'Unknown pool.', exit_code=2)
+    packaged = (pool.get('runtime') or {}).get('contract') == PACKAGED_RUNTIME
     if pool.get('dev_only') and mode == 'mainnet':
         return Result('install', 'blocked', 'Pool {} is a development-network pool and cannot be installed on mainnet; use --mode localnet or testnet, or choose a launch pool.'.format(name), exit_code=12)
     if 'manifest_id' in config and config['manifest_id'] != pool['manifest_id'] and not getattr(args, 'accept_manifest_change', False):
@@ -382,6 +427,10 @@ def install(args):
         for cmd in (['docker', 'info'], ['docker', 'compose', 'version']):
             if runner(cmd)[0]:
                 return Result('install', 'blocked', 'Docker daemon and compose plugin must be available.', exit_code=10)
+        if packaged:
+            rc, version, _ = runner(['docker', 'version', '--format', '{{.Server.Version}}'])
+            if rc or not docker_loopback_safe(version):
+                return Result('install', 'blocked', 'Update Docker Engine to {} or later for isolated loopback access to this model.'.format(DOCKER_FLOOR_TEXT), exit_code=10)
         if not d['images'].get('public') and not os.environ.get('REAX_SOURCE_DIR'):
             return Result('install', 'blocked', 'Release images are not yet marked available; supply REAX_SOURCE_DIR for a local build.', exit_code=12)
     if (mode == 'localnet' or not d['images'].get('public')) and not (os.environ.get('REAX_SOURCE_DIR') or read_config(home).get('source_dir') or d['source'].get('public')):
@@ -439,30 +488,114 @@ def install(args):
         os.close(fd)
     (home / 'logs').mkdir(exist_ok=True)
     if mode != 'localnet':
-        render(home, d, config, source)
-        rc, _, _ = runner(['docker', 'compose', '-f', str(home / 'compose.yml'), 'pull' if d['images'].get('public') else 'build'], timeout=1800)
-        if rc:
-            return Result('install', 'error', 'Image download or build failed.', exit_code=13)
-        mark(home, 'images', {'images': d['images']})
-        target = weights_dir(home, pool)
-        target.mkdir(parents=True, exist_ok=True)
-        script = 'from huggingface_hub import snapshot_download; import sys; snapshot_download(repo_id=sys.argv[1],revision=sys.argv[2],local_dir=sys.argv[3],allow_patterns=sys.argv[4:] or None)'
-        # weights.files limits the download to those exact files (GGUF repos hold one file; never pull the rest)
-        # own HF cache dir: an inherited HF_HOME can be unwritable for this user (found on a real GPU host: xet cache permission denied)
-        hf_env = dict(os.environ, HF_HOME=str(home / 'hf-cache'))
-        rc, _, hf_err = runner([str(home / 'venv/bin/python'), '-I', '-c', script, pool['weights']['repo'], pool['weights']['revision'], str(target)] + list(pool['weights'].get('files') or []), timeout=7200, env=hf_env)
-        if rc:
-            if pool['weights'].get('gated'):
-                return human('install', 'Accept the weights gate with your own Hugging Face account.',
-                             'The gated model requires account access; reaxctl never asks for your token.',
-                             ['Accept access on the model page.', str(home / 'venv/bin/hf') + ' auth login', 'Retry reaxctl install.'],
-                             'https://huggingface.co/' + pool['weights']['repo'])
-            return Result('install', 'error', 'Pinned weights download failed; retry install.', data={'detail': detail(hf_err)}, exit_code=13)
+        # Stage the new compose file next to the live one; it replaces compose.yml only after
+        # images and weights are in place, so a failed install never leaves compose.yml pointing
+        # at a model whose weights are missing while config.json still names the old one.
+        staged, staged_env = home / 'compose.next.yml', home / 'miner.env.next'
+        def discard():
+            for leftover in (staged, staged_env):
+                try:
+                    leftover.unlink()
+                except OSError:
+                    pass
+        try:
+            render(home, d, config, source, path=staged, env_path=staged_env)
+            failure = stage(runner, home, d, pool, packaged, staged)
+        except BaseException:
+            discard()
+            raise
+        if failure:
+            discard()
+            return failure
+        # miner.env first: the live compose.yml always reads miner.env, so both name the same model
+        # from here on; config.json follows immediately.
+        os.replace(str(staged_env), str(home / 'miner.env'))
+        os.replace(str(staged), str(home / 'compose.yml'))
         mark(home, 'weights', pool['weights'])
     write_config(home, config)
     mark(home, 'install', {'release_id': d['release_id'], 'mode': mode})
     return Result('install', summary='Installation prepared.', data={'home': str(home), 'mode': mode, 'token_path': str(secret)},
                   next=[{'command': 'reaxctl localnet up' if mode == 'localnet' else 'reaxctl wallet status', 'why': 'Continue setup.'}])
+
+
+def stage(runner, home, d, pool, packaged, compose_file):
+    """Pull or build the images and download the pinned weights; return a failure Result or None."""
+    rc, _, _ = runner(['docker', 'compose', '-f', str(compose_file), 'pull' if d['images'].get('public') else 'build'], timeout=1800)
+    if rc:
+        return Result('install', 'error', 'Image download or build failed.', exit_code=13)
+    mark(home, 'images', {'images': d['images']})
+    weights = pool['weights']
+    if packaged:
+        root = packaged_cache(home, pool)
+        downloads = [(item, root / item['cache_id'] / item['revision']) for item in packaged_items(pool)]
+    else:
+        downloads = [(weights, weights_dir(home, pool))]
+    script = 'from huggingface_hub import snapshot_download; import sys; snapshot_download(repo_id=sys.argv[1],revision=sys.argv[2],local_dir=sys.argv[3],allow_patterns=sys.argv[4:] or None)'
+    # Keep the Hugging Face cache under this kit home, which may run as a non-root user.
+    hf_env = dict(os.environ, HF_HOME=str(home / 'hf-cache'))
+    if packaged:
+        hf_env['HF_HUB_DISABLE_IMPLICIT_TOKEN'] = '1'
+    for item, target in downloads:
+        target.mkdir(parents=True, exist_ok=True)
+        command = [str(home / 'venv/bin/python'), '-I', '-c', script,
+                   item['repo'], item['revision'], str(target)] + item.get('files', [])
+        rc, _, hf_err = runner(command, timeout=7200, env=hf_env)
+        if rc and weights.get('gated'):
+            return human('install', 'Accept the weights gate with your own Hugging Face account.',
+                         'The gated model requires account access; reaxctl never asks for your token.',
+                         ['Accept access on the model page.', str(home / 'venv/bin/hf') + ' auth login', 'Retry reaxctl install.'],
+                         'https://huggingface.co/' + weights['repo'])
+        if rc:
+            return Result('install', 'error', 'Pinned weights download failed; retry install.', data={'detail': detail(hf_err)}, exit_code=13)
+        missing = missing_files(target, item.get('files'))
+        if missing:
+            return Result('install', 'error', 'Pinned weights download is incomplete; retry install.',
+                          data={'repo': item['repo'], 'missing': missing[:10]}, exit_code=13)
+    if packaged:
+        for lock, _ in runtime_locks(home, pool):
+            if not ensure_lock_file(lock):
+                return Result('install', 'error', 'Cannot create the runtime lock file in the weights cache; check its permissions.',
+                              data={'path': str(lock)}, exit_code=13)
+    return None
+
+
+def missing_files(target, files):
+    """Files of a download that are absent, empty, not regular or reached through a symbolic link."""
+    import stat
+    target = pathlib.Path(target)
+    if not files:
+        found = any(p.is_file() and not p.is_symlink() and p.stat().st_size > 0
+                    for p in target.rglob('*') if not any(part.startswith('.') for part in p.relative_to(target).parts))
+        return [] if found else ['(no files)']
+    bad = []
+    for name in files:
+        path, ok = target, True
+        for part in name.split('/'):
+            path = path / part
+            try:
+                info = os.lstat(str(path))
+            except OSError:
+                ok = False
+                break
+            if stat.S_ISLNK(info.st_mode):
+                ok = False
+                break
+        if not ok or not stat.S_ISREG(info.st_mode) or info.st_size <= 0:
+            bad.append(name)
+    return bad
+
+
+# Docker Engine 28.2.0 up to 28.3.2 drops the rules that keep 127.0.0.1-published ports local
+# when firewalld reloads (CVE-2025-54388, fixed in 28.3.3); older engines lack the loopback isolation.
+DOCKER_FLOOR = (28, 3, 3)
+DOCKER_FLOOR_TEXT = '28.3.3'
+
+
+def docker_loopback_safe(version):
+    match = re.match(r'\s*(\d+)\.(\d+)(?:\.(\d+))?', version or '')
+    if not match:
+        return False
+    return tuple(int(x or 0) for x in match.groups()) >= DOCKER_FLOOR
 
 
 def register(sub):

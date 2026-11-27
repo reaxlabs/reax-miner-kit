@@ -19,12 +19,16 @@ REVISION = re.compile(r'[0-9a-fA-F]{40}')
 MANIFEST_LIVE = re.compile(r'[0-9a-f]{16}')
 MANIFEST_ANY = re.compile(r'(?:[0-9a-f]{16}|TBD-[A-Za-z0-9_]+)')
 IMAGE = re.compile(r'[a-z0-9][a-z0-9./_-]*')
+WEIGHT_REPO = re.compile(r'[A-Za-z0-9_-]+/[A-Za-z0-9_.-]+')
+CACHE_ID = re.compile(r'[a-z0-9][a-z0-9.-]{0,63}')
+CACHE_PATH = re.compile(r'[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*')
+PACKAGED_RUNTIME = 'model-runtime/1'
 RAM_TOLERANCE = 0.9  # nominal RAM sizes: an "8 GB" board reports about 7.4 GiB
 
 MODEL_KEYS = {'id', 'name', 'pot', 'status', 'weights', 'runtime', 'gpu', 'manifest_id', 'commitment', 'disk_gb',
               'unit_throughput', 'min_ram_gb', 'min_cpu_cores', 'arch', 'accelerator', 'tier', 'jetson', 'miner_env', 'notes'}
-WEIGHT_KEYS = {'repo', 'revision', 'gated', 'size_gb', 'files', 'licence', 'format'}
-RUNTIME_KEYS = {'image', 'digest', 'port', 'env', 'host_var', 'port_var'}
+WEIGHT_KEYS = {'repo', 'revision', 'gated', 'size_gb', 'files', 'licence', 'format', 'cache_id', 'dependencies'}
+RUNTIME_KEYS = {'image', 'digest', 'port', 'env', 'host_var', 'port_var', 'contract'}
 GPU_KEYS = {'class', 'min_vram_gb', 'max_vram_gb', 'count', 'vendor', 'measured', 'unmeasured_note'}
 THROUGHPUT_KEYS = {'value', 'unit', 'per', 'note'}
 # Set by the kit itself in the sidecar environment; a descriptor must not override them.
@@ -47,6 +51,18 @@ def _env(env, label, reserved=()):
             raise ValueError('invalid ' + label)
         if key in reserved:
             raise ValueError(label + ' sets a variable the kit controls: ' + key)
+
+
+def _cache_entry(item):
+    cache_id = item.get('cache_id')
+    if not isinstance(cache_id, str) or not CACHE_ID.fullmatch(cache_id):
+        raise ValueError('invalid packaged weights cache id')
+    files = item.get('files')
+    if (not isinstance(files, list) or not files or any(
+            not isinstance(path, str) or not CACHE_PATH.fullmatch(path)
+            or any(part in ('.', '..') for part in path.split('/')) for path in files)
+            or len(set(files)) != len(files)):
+        raise ValueError('invalid packaged weights file list')
 
 
 def validate_model(release, model, seen_ids, seen_ports):
@@ -76,13 +92,34 @@ def validate_model(release, model, seen_ids, seen_ports):
     weights = model['weights']
     if not isinstance(weights, dict) or {'repo', 'revision', 'gated', 'size_gb'} - set(weights) or set(weights) - WEIGHT_KEYS:
         raise ValueError('invalid model weights')
-    if not isinstance(weights['repo'], str) or not re.fullmatch(r'[A-Za-z0-9_-]+/[A-Za-z0-9_.-]+', weights['repo']):
+    if not isinstance(weights['repo'], str) or not WEIGHT_REPO.fullmatch(weights['repo']):
         raise ValueError('invalid model weights repo')
     if not (isinstance(weights['revision'], str) and (REVISION.fullmatch(weights['revision']) or (not live and PLACEHOLDER.fullmatch(weights['revision'])))):
         raise ValueError('invalid model weights revision (a live model needs a 40-hex revision)')
     if type(weights['gated']) is not bool or not _number(weights['size_gb']):
         raise ValueError('invalid model weights flags')
-    if 'files' in weights:
+    runtime = model['runtime']
+    packaged = isinstance(runtime, dict) and runtime.get('contract') == PACKAGED_RUNTIME
+    if packaged:
+        if weights['gated']:
+            raise ValueError('packaged model weights must be publicly downloadable')
+        _cache_entry(weights)
+        ids = {weights['cache_id']}
+        dependencies = weights.get('dependencies', [])
+        if not isinstance(dependencies, list):
+            raise ValueError('invalid packaged weights dependencies')
+        for dep in dependencies:
+            if (not isinstance(dep, dict) or set(dep) != {'cache_id', 'repo', 'revision', 'files'}
+                    or not isinstance(dep['repo'], str) or not WEIGHT_REPO.fullmatch(dep['repo'])
+                    or not isinstance(dep['revision'], str) or not REVISION.fullmatch(dep['revision'])):
+                raise ValueError('invalid packaged weights dependency pin')
+            _cache_entry(dep)
+            if dep['cache_id'] in ids:
+                raise ValueError('duplicate packaged weights cache id')
+            ids.add(dep['cache_id'])
+    elif set(weights) & {'cache_id', 'dependencies'}:
+        raise ValueError('packaged weights fields require the packaged runtime contract')
+    elif 'files' in weights:
         files = weights['files']
         from .descriptor import FILE_NAME
         if not isinstance(files, list) or not files or len(set(map(str, files))) != len(files) or any(not isinstance(f, str) or not FILE_NAME.fullmatch(f) or f.endswith('.') for f in files):
@@ -91,9 +128,12 @@ def validate_model(release, model, seen_ids, seen_ports):
         if key in weights and (not isinstance(weights[key], str) or not re.fullmatch(r'[A-Za-z0-9 ._+/-]{1,60}', weights[key])):
             raise ValueError('invalid model weights ' + key)
     # runtime sidecar
-    runtime = model['runtime']
     if not isinstance(runtime, dict) or {'image', 'digest', 'port'} - set(runtime) or set(runtime) - RUNTIME_KEYS:
         raise ValueError('invalid model runtime')
+    if 'contract' in runtime and not packaged:
+        raise ValueError('unknown model runtime contract')
+    if packaged and (runtime.get('env') or 'host_var' in runtime or 'port_var' in runtime):
+        raise ValueError('packaged runtime uses its built-in settings')
     image = runtime['image']
     if not isinstance(image, str) or not IMAGE.fullmatch(image):
         raise ValueError('invalid descriptor image')
@@ -225,7 +265,7 @@ def _from_model(release, model):
             'manifest_id': model['manifest_id'], 'commitment': model['commitment'], 'unit_throughput': model.get('unit_throughput'),
             'runtime': {'image': runtime['image'], 'digest': runtime['digest'], 'port': runtime['port'], 'env': dict(runtime.get('env') or {}),
                         'host_var': runtime.get('host_var', 'RUNTIME_HOST'), 'port_var': runtime.get('port_var', 'RUNTIME_PORT')},
-            'miner_env': dict(model.get('miner_env') or {}), 'dev_only': False}
+            'miner_env': dict(model.get('miner_env') or {}), 'notes': model.get('notes'), 'dev_only': False}
 
 
 def catalog(release):
@@ -258,6 +298,8 @@ def pool_view(release, model_id):
             'runtime': {'env': dict(runtime.get('env') or {}), 'host_var': runtime.get('host_var', 'RUNTIME_HOST'), 'port_var': runtime.get('port_var', 'RUNTIME_PORT')},
             'catalog': True, 'status': model['status'], 'image_ref': ref, 'disk_gb': model['disk_gb'],
             'miner_env': dict(model.get('miner_env') or {})}
+    if runtime.get('contract') == PACKAGED_RUNTIME:
+        view['runtime']['contract'] = PACKAGED_RUNTIME
     for key in ('min_ram_gb', 'min_cpu_cores'):
         if key in model:
             view[key] = model[key]
