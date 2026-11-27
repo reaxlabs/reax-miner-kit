@@ -5,6 +5,10 @@ worked examples and answers to the questions miners have asked. No rule changed.
 [The rules in full](#the-rules-in-full-binding-text); the sections before it explain it. These rules describe the planned
 validator release; its start is announced at least 24 hours ahead.
 
+## Paid start update
+
+Keep your current setup. The existing pools and payouts continue at their current rates. The current target is Tuesday, 1 December 2026 at 14:00 UTC, subject to the verification checks passing. See the [live mining rules](https://reax.co/mining/v2/) for the current status.
+
 ## What you mine
 
 You serve one of the decision models on our list (see [Model list](#model-list-v1-pots)) on your own GPU or CPU, with the
@@ -123,8 +127,8 @@ A GPU, host, IP or hotkey cannot be in both layers. EU interest: ask in #92 and 
 
 | When | What happens |
 |---|---|
-| Now | Today's four pools run unchanged. The v2 kit is out. |
-| Start (announced at least 24 h ahead, at the latest Tuesday 1 December 2026) | Pots open for every model whose reference check has passed; the others join when their check passes, without further notice. |
+| Now | The four existing pools continue at their current rates. Keep using the current miner kit. |
+| Start (announced at least 24 hours ahead). See the [current target](#paid-start-update). | Pots open for every model whose reference check has passed; the others join when their check passes, without further notice. |
 | First 7 days after the start | Today's pools are paid only what the pots do not pay out, never more than today. Then they end. |
 | Once validators send scored pot traffic to attested nodes (confirmed in #92) | TEE units count 1.5x. |
 | Monday 30 November 2026 | TEE check: at least two TEE operators in every listed model's open global pot? All or nothing. |
@@ -190,8 +194,7 @@ A GPU, host, IP or hotkey cannot be in both layers. EU interest: ask in #92 and 
    answers, so they can run as many parallel requests as their hardware answers correctly. They are paid per verified,
    attested GPU-hour, always more than the same GPU class earns in the open pots; the exact rate is in the operator
    agreement. A GPU, host or IP cannot be in both layers.
-9. **Start.** The validator release with the pots starts at a time announced at least 24 hours ahead, **at the latest on
-   Tuesday 1 December 2026**. Models whose check has passed are open from
+9. **Start.** The validator release with the pots starts at a time announced at least 24 hours ahead, with the [current target](#paid-start-update) subject to verification. Models whose check has passed are open from
    the start; the others join as soon as their check passes, without further notice.
 10. **TEE for all inference mining.** TEE (confidential computing with attestation) becomes the standard in every pot,
     global and EU. GPU-hours with a valid TEE attestation count 1.5x toward your pot share as soon as validators send
