@@ -1,6 +1,9 @@
 # Verda SNP guest image: design, not release-ready
 
-## Live T2 release result (24 Nov 2026)
+The measurements on this page document historical test boots. For current operator setup and T2 image
+availability, see the [operator guide](../../docs/TEE-OPERATOR.md).
+
+## Live T2 test result (24 Nov 2026)
 
 Both variants built on the stock boot (`build debug`, `build release`, ~80 s + ~25 s). DEBUG boot: SSH back after
 91 s (the `ssh.service` drop-in fix works; no ordering cycle), dead-man disarmed, `/` = overlay on the dm-verity
